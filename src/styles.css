@@ -786,6 +786,111 @@ h3 {
   margin-top: 16px;
 }
 
+.prepInstallPanel {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid #d7cfbd;
+  border-radius: 8px;
+  background: rgba(248, 246, 238, 0.92);
+}
+
+.prepInstallPanel p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.prepBoardGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.prepBoardTile {
+  display: grid;
+  grid-template-rows: 14px 20px 1fr 14px;
+  align-items: center;
+  justify-items: center;
+  min-height: 72px;
+  padding: 5px;
+  border: 1px solid #c9c2b1;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #273137;
+  font-weight: 800;
+}
+
+.prepBoardTile.current {
+  border-color: #d23f31;
+  background: #fff1ee;
+}
+
+.prepBoardTile span,
+.prepBoardTile small {
+  justify-self: start;
+  color: #879194;
+  font-size: 10px;
+}
+
+.prepBoardTile strong {
+  font-size: 11px;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.prepSkillTargets {
+  display: grid;
+  gap: 8px;
+}
+
+.prepUnitTarget {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid #d7cfbd;
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.prepUnitHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.prepUnitHeader span {
+  color: #677376;
+  font-size: 12px;
+}
+
+.prepSkillSlots {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.prepSkillSlots button {
+  display: grid;
+  gap: 3px;
+  align-content: center;
+  min-height: 44px;
+  padding: 5px;
+  border: 1px solid #c9c2b1;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #273137;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.prepSkillSlots small {
+  color: #879194;
+  font-size: 9px;
+}
+
 .fullWidth {
   width: 100%;
   margin-top: 14px;
@@ -1413,6 +1518,74 @@ h3 {
 
   .prepActions {
     margin-top: 8px;
+  }
+
+  .prepInstallPanel {
+    gap: 5px;
+    margin-top: 8px;
+    padding: 6px;
+  }
+
+  .prepInstallPanel p {
+    font-size: 10px;
+  }
+
+  .prepBoardGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .prepBoardTile {
+    grid-template-rows: 10px 14px 1fr 10px;
+    min-height: 44px;
+    padding: 3px;
+    border-radius: 5px;
+  }
+
+  .prepBoardTile svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .prepBoardTile span,
+  .prepBoardTile small {
+    font-size: 7px;
+  }
+
+  .prepBoardTile strong {
+    font-size: 8px;
+  }
+
+  .prepSkillTargets {
+    gap: 5px;
+  }
+
+  .prepUnitTarget {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .prepUnitHeader {
+    font-size: 10px;
+  }
+
+  .prepUnitHeader span {
+    font-size: 9px;
+  }
+
+  .prepSkillSlots {
+    gap: 4px;
+  }
+
+  .prepSkillSlots button {
+    min-height: 28px;
+    padding: 3px 2px;
+    border-radius: 5px;
+    font-size: 8px;
+  }
+
+  .prepSkillSlots small {
+    font-size: 7px;
   }
 }
 

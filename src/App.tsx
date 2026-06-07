@@ -1363,7 +1363,10 @@ export function App() {
                       <button
                         key={`${tile.id}-${index}`}
                         className={`inventoryButton ${selectedTileIndex === index ? "selected" : ""}`}
-                        onClick={() => setSelectedTileIndex(index)}
+                        onClick={() => {
+                          setSelectedTileIndex(index);
+                          setSelectedSkillIndex(null);
+                        }}
                       >
                         {tileIcon(tile.type)}
                         <span>
@@ -1380,7 +1383,10 @@ export function App() {
                       <button
                         key={`${skill.id}-${index}`}
                         className={`inventoryButton ${selectedSkillIndex === index ? "selected" : ""}`}
-                        onClick={() => setSelectedSkillIndex(index)}
+                        onClick={() => {
+                          setSelectedSkillIndex(index);
+                          setSelectedTileIndex(null);
+                        }}
                       >
                         <Shield size={16} />
                         <span>
@@ -1391,6 +1397,50 @@ export function App() {
                     ))}
                   </div>
                 </div>
+                {selectedTileIndex !== null && tileInventory[selectedTileIndex] && (
+                  <div className="prepInstallPanel">
+                    <h3>設置先を選択</h3>
+                    <p>選択中: {tileInventory[selectedTileIndex].name}</p>
+                    <div className="prepBoardGrid">
+                      {board.map((tile, index) => (
+                        <button
+                          key={`prep-board-${tile.id}-${index}`}
+                          className={`prepBoardTile ${position === index ? "current" : ""}`}
+                          onClick={() => void installTile(index)}
+                        >
+                          <span>{index + 1}</span>
+                          {tileIcon(tile.type)}
+                          <strong>{tile.name}</strong>
+                          <small>Lv{tile.level}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {selectedSkillIndex !== null && skillInventory[selectedSkillIndex] && (
+                  <div className="prepInstallPanel">
+                    <h3>装備先を選択</h3>
+                    <p>選択中: {skillInventory[selectedSkillIndex].name}</p>
+                    <div className="prepSkillTargets">
+                      {units.map((unit) => (
+                        <article key={`prep-skill-${unit.id}`} className="prepUnitTarget">
+                          <div className="prepUnitHeader">
+                            <strong>{unit.name}</strong>
+                            <span>{unit.job}</span>
+                          </div>
+                          <div className="prepSkillSlots">
+                            {unit.skillBoard.map((skill, index) => (
+                              <button key={`${unit.id}-prep-slot-${index}`} onClick={() => void installSkill(unit.id, index)}>
+                                <small>{index + 1}</small>
+                                {skill.name}
+                              </button>
+                            ))}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="prepActions">
                   <button
                     className="ghostButton"
