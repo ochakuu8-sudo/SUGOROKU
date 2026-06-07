@@ -681,6 +681,7 @@ export function App() {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [shopOffers, setShopOffers] = useState<Tile[]>([]);
   const [recruits, setRecruits] = useState<Omit<Unit, "hp" | "boardIndex">[]>([]);
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
   const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(null);
   const [selectedSkillIndex, setSelectedSkillIndex] = useState<number | null>(null);
   const [log, setLog] = useState<string[]>(["ラン開始。まずは勇者1体で盤面を育てる。"]);
@@ -1203,6 +1204,7 @@ export function App() {
 
   async function useItem(item: Item, index: number) {
     if (phase !== "explore" || locked) return;
+    setSelectedItemIndex(null);
     setItems((current) => current.filter((_, i) => i !== index));
     if (item.timing === "dice") {
       const value = Number(item.id.replace("fixed-", ""));
@@ -1241,6 +1243,7 @@ export function App() {
     setRewards([]);
     setShopOffers([]);
     setRecruits([]);
+    setSelectedItemIndex(null);
     setSelectedTileIndex(null);
     setSelectedSkillIndex(null);
     setBanner(null);
@@ -1426,7 +1429,12 @@ export function App() {
           <div className={`itemList ${inventoryPulse ? "inventoryPulse" : ""}`}>
             {items.length === 0 && <p className="emptyText">未所持</p>}
             {items.map((item, index) => (
-              <button key={`${item.id}-${index}`} className="inventoryButton" onClick={() => void useItem(item, index)} disabled={phase !== "explore" || locked}>
+              <button
+                key={`${item.id}-${index}`}
+                className="inventoryButton"
+                onClick={() => setSelectedItemIndex(index)}
+                disabled={phase !== "explore" || locked}
+              >
                 <Sparkles size={16} />
                 <span>
                   <strong>{item.name}</strong>
@@ -1455,6 +1463,25 @@ export function App() {
               </button>
             </div>
             <p>{skillPopup.description}</p>
+          </aside>
+        </div>
+      )}
+
+      {selectedItemIndex !== null && items[selectedItemIndex] && (
+        <div className="skillPopupLayer" onClick={() => setSelectedItemIndex(null)}>
+          <aside className="skillPopup itemPopup" onClick={(event) => event.stopPropagation()}>
+            <div className="modalHeader">
+              <h2>{items[selectedItemIndex].name}</h2>
+              <button className="ghostButton" onClick={() => setSelectedItemIndex(null)}>
+                閉じる
+              </button>
+            </div>
+            <p>{items[selectedItemIndex].description}</p>
+            <div className="itemPopupActions">
+              <button className="primaryButton" onClick={() => void useItem(items[selectedItemIndex], selectedItemIndex)}>
+                使用
+              </button>
+            </div>
           </aside>
         </div>
       )}

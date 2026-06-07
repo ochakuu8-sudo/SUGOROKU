@@ -466,7 +466,7 @@ h3 {
 .unitInfoPanel {
   position: relative;
   display: grid;
-  grid-template-rows: 32px 9px 30px 42px;
+  grid-template-rows: 36px 9px 30px 42px;
   gap: 7px;
   width: 100%;
   min-width: 0;
@@ -478,6 +478,10 @@ h3 {
   box-shadow: 0 16px 38px rgba(68, 54, 33, 0.12);
   overflow: hidden;
   animation: unit-enter 0.36s ease both;
+}
+
+.unitInfoPanel.battleInfo {
+  grid-template-rows: 38px 9px 30px 42px;
 }
 
 .unitInfoPanel.selectable {
@@ -509,6 +513,8 @@ h3 {
   align-items: start;
   gap: 8px;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .unitInfoHead h3 {
@@ -530,8 +536,10 @@ h3 {
 }
 
 .unitInfoHead span {
+  align-self: start;
   font-size: 12px;
   font-weight: 900;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -773,6 +781,12 @@ h3 {
   color: #3c464a;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.itemPopupActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
 .modal p {
@@ -2151,15 +2165,21 @@ h3 {
   }
 
   .unitInfoPanel {
-    grid-template-rows: 24px 5px 17px 22px;
+    grid-template-rows: 26px 5px 17px 22px;
     gap: 4px;
-    min-height: 82px;
+    min-height: 84px;
     padding: 5px;
     border-radius: 6px;
   }
 
+  .unitInfoPanel.battleInfo {
+    grid-template-rows: 29px 5px 17px 22px;
+    min-height: 87px;
+  }
+
   .unitInfoHead {
     gap: 4px;
+    overflow: hidden;
   }
 
   .unitInfoHead h3 {
