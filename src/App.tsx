@@ -188,17 +188,26 @@ const initialHero: Unit = {
   skillBoard: [normalAttack, normalAttack, normalAttack, normalAttack],
 };
 
+let idCounter = 0;
+
+function createId(prefix: string) {
+  idCounter += 1;
+  return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+}
+
 function maxHp(unit: Unit) {
   return unit.stats.vitality * 5;
 }
 
 function cloneTile(tile: Tile): Tile {
-  return { ...tile, id: `${tile.id}-${crypto.randomUUID()}` };
+  return { ...tile, id: createId(tile.id) };
 }
 
 function makeTrainingTile(stat: StatKey, scope: Scope, rare = false): Tile {
   return {
-    id: `${scope}-${stat}-${crypto.randomUUID()}`,
+    id: createId(`${scope}-${stat}`),
     name: `${scope === "all" ? "全体" : ""}${statLabels[stat]}訓練`,
     type: "training",
     stat,
@@ -451,7 +460,7 @@ export function App() {
     if (tile.type === "treasure") {
       const rareTile = makeTrainingTile(randomFrom(["vitality", "power", "agility"] as StatKey[]), "all", true);
       setTileInventory((current) => [...current, rareTile].slice(0, 5));
-      setBoard((current) => current.map((entry, index) => (index === tileIndex ? emptyTile(`empty-${crypto.randomUUID()}`) : entry)));
+      setBoard((current) => current.map((entry, index) => (index === tileIndex ? emptyTile(createId("empty")) : entry)));
       pushLog(`宝箱を消費して「${rareTile.name}」を入手。`);
       finishTurn();
       return;

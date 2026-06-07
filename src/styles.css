@@ -446,6 +446,211 @@ h3 {
   }
 }
 
+@media (orientation: landscape) and (max-height: 560px) {
+  body {
+    min-width: 700px;
+  }
+
+  .app {
+    min-height: 100vh;
+    padding: 8px;
+  }
+
+  .topbar {
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-size: 20px;
+  }
+
+  h2 {
+    font-size: 14px;
+  }
+
+  h3 {
+    font-size: 13px;
+  }
+
+  .topbar p {
+    display: none;
+  }
+
+  .statusStrip {
+    gap: 4px;
+  }
+
+  .statusStrip span {
+    min-height: 28px;
+    padding: 4px 7px;
+    font-size: 12px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(500px, 1fr) 250px;
+    gap: 8px;
+    max-width: none;
+  }
+
+  .boardPanel,
+  .sidePanel,
+  .unitCard {
+    border-radius: 6px;
+    box-shadow: 0 8px 20px rgba(68, 54, 33, 0.1);
+  }
+
+  .boardPanel,
+  .sidePanel {
+    padding: 8px;
+  }
+
+  .primaryButton,
+  .ghostButton {
+    min-height: 32px;
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+
+  .boardGrid {
+    grid-template-columns: repeat(5, minmax(82px, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .tile {
+    grid-template-rows: 14px 18px 1fr 14px;
+    min-height: 72px;
+    padding: 4px;
+    border-radius: 6px;
+  }
+
+  .tile strong {
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .tile small,
+  .tileIndex {
+    font-size: 10px;
+  }
+
+  .runControls {
+    margin-top: 6px;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .sidePanel {
+    gap: 6px;
+    max-height: calc(100vh - 58px);
+    overflow: hidden;
+  }
+
+  .itemList {
+    gap: 5px;
+  }
+
+  .inventoryButton {
+    grid-template-columns: 18px 1fr;
+    gap: 5px;
+    min-height: 36px;
+    padding: 5px;
+    border-radius: 6px;
+  }
+
+  .inventoryButton strong,
+  .inventoryButton small {
+    font-size: 11px;
+  }
+
+  .logList {
+    gap: 4px;
+    overflow: auto;
+    padding-left: 18px;
+    font-size: 11px;
+  }
+
+  .units {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    max-width: none;
+    margin-top: 8px;
+  }
+
+  .unitCard {
+    padding: 8px;
+  }
+
+  .unitHeader p,
+  .unitHeader span {
+    font-size: 11px;
+  }
+
+  .hpBar {
+    height: 7px;
+    margin: 6px 0;
+  }
+
+  .stats {
+    gap: 4px;
+  }
+
+  .stats span {
+    min-height: 22px;
+    padding: 4px 2px;
+    font-size: 11px;
+  }
+
+  .skillBoard {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 7px;
+  }
+
+  .skillSlot {
+    min-height: 30px;
+    padding: 4px 2px;
+    border-radius: 6px;
+    font-size: 10px;
+  }
+
+  .modalLayer {
+    padding: 8px;
+  }
+
+  .modal {
+    width: min(720px, 100%);
+    max-height: calc(100vh - 16px);
+    padding: 12px;
+  }
+
+  .choiceGrid {
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .choiceButton {
+    min-height: 76px;
+    padding: 8px;
+  }
+
+  .choiceButton span,
+  .choiceButton small {
+    font-size: 11px;
+  }
+
+  .prepColumns {
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .prepActions {
+    margin-top: 10px;
+  }
+}
+
 @media (max-width: 720px) {
   .app {
     padding: 14px;
@@ -466,5 +671,25 @@ h3 {
   .choiceGrid,
   .prepColumns {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 720px) {
+  .app {
+    padding: 10px;
+  }
+
+  .topbar,
+  .layout,
+  .units {
+    min-width: 0;
+  }
+
+  .boardGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tile {
+    min-height: 86px;
   }
 }
