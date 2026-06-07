@@ -626,6 +626,30 @@ h3 {
   background: #8e2d2d;
 }
 
+.enemySkillBoard {
+  margin-top: 2px;
+}
+
+.enemySkillSlot {
+  background: #fff3ed;
+}
+
+.enemySkillSlot.cursor {
+  border-color: #8e2d2d;
+  background: #ffe5dc;
+}
+
+.enemySkillSlot.firing {
+  border-color: #8e2d2d;
+  background: #f8d7cd;
+}
+
+.enemyPiece {
+  background:
+    radial-gradient(circle at 35% 28%, #ffffff 0 13%, transparent 14%),
+    linear-gradient(145deg, #6c2b2b, #c45238);
+}
+
 .battleStage.bad .enemyCard {
   animation: enemy-hit 0.26s ease;
 }

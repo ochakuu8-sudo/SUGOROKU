@@ -52,6 +52,20 @@ type Skill = {
   cost?: number;
 };
 
+type EnemySkill = Skill & {
+  effect: "strike" | "heavy" | "cleave" | "recover";
+};
+
+type EnemyCombatant = {
+  name: string;
+  hp: number;
+  maxHp: number;
+  power: number;
+  agility: number;
+  skillBoard: EnemySkill[];
+  boardIndex: number;
+};
+
 type Item = {
   id: string;
   name: string;
@@ -93,9 +107,14 @@ type BattleEvent =
     }
   | {
       type: "enemy";
+      enemyName: string;
+      skillName: string;
+      slotIndex: number;
+      nextIndex: number;
       text: string;
-      targetUnitId: string;
-      value: number;
+      target: "unit" | "party" | "self";
+      targetUnitId?: string;
+      value?: number;
       tone: Tone;
     };
 
@@ -105,6 +124,7 @@ type BattleResult = {
   units: Unit[];
   enemyName: string;
   enemyMaxHp: number;
+  enemySkillBoard: EnemySkill[];
   events: BattleEvent[];
 };
 
@@ -112,6 +132,8 @@ type BattleView = {
   enemyName: string;
   enemyHp: number;
   enemyMaxHp: number;
+  enemySkillBoard: EnemySkill[];
+  enemyBoardIndex: number;
   message: string;
   activeUnitId?: string;
   activeSlot?: number;
@@ -163,6 +185,33 @@ const skillPool: Skill[] = [
     description: "味方全員を威力分回復。",
   },
 ];
+
+const enemySkillPool: Record<string, EnemySkill> = {
+  strike: {
+    id: "enemy-strike",
+    name: "爪撃",
+    effect: "strike",
+    description: "最も弱っている味方1体へ通常ダメージ。",
+  },
+  heavy: {
+    id: "enemy-heavy",
+    name: "強打",
+    effect: "heavy",
+    description: "最も弱っている味方1体へ大ダメージ。",
+  },
+  cleave: {
+    id: "enemy-cleave",
+    name: "なぎ払い",
+    effect: "cleave",
+    description: "味方全員へ小ダメージ。",
+  },
+  recover: {
+    id: "enemy-recover",
+    name: "再生",
+    effect: "recover",
+    description: "敵自身のHPを少し回復。",
+  },
+};
 
 const recruitPool: Omit<Unit, "hp" | "boardIndex">[] = [
   {
@@ -259,6 +308,24 @@ function maxHp(unit: Unit) {
   return unit.stats.vitality * 5;
 }
 
+function makeEnemy(battleCount: number): EnemyCombatant {
+  const isBoss = battleCount === 10;
+  const isMidBoss = battleCount % 3 === 0;
+  return {
+    name: isBoss ? "最終ボス" : isMidBoss ? "中ボス" : "魔物",
+    hp: 28 + battleCount * 12,
+    maxHp: 28 + battleCount * 12,
+    power: 4 + battleCount * 2,
+    agility: 3 + battleCount,
+    boardIndex: 0,
+    skillBoard: isBoss
+      ? [enemySkillPool.heavy, enemySkillPool.cleave, enemySkillPool.recover, enemySkillPool.heavy]
+      : isMidBoss
+        ? [enemySkillPool.strike, enemySkillPool.heavy, enemySkillPool.cleave, enemySkillPool.strike]
+        : [enemySkillPool.strike, enemySkillPool.strike, enemySkillPool.heavy, enemySkillPool.strike],
+  };
+}
+
 function cloneTile(tile: Tile): Tile {
   return { ...tile, id: createId(tile.id) };
 }
@@ -335,13 +402,7 @@ function getTileDescription(tile: Tile) {
 
 function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): BattleResult {
   const fighters = units.map((unit) => ({ ...unit, hp: Math.min(unit.hp, maxHp(unit)), tempHp: 0 }));
-  const enemy = {
-    name: battleCount === 10 ? "最終ボス" : battleCount % 3 === 0 ? "中ボス" : "魔物",
-    hp: 28 + battleCount * 12,
-    maxHp: 28 + battleCount * 12,
-    power: 4 + battleCount * 2,
-    agility: 3 + battleCount,
-  };
+  const enemy = makeEnemy(battleCount);
   const logs: string[] = [`${enemy.name}が現れた。`];
   const events: BattleEvent[] = [];
 
@@ -380,14 +441,72 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
       if (enemy.hp <= 0 || fighters.every((unit) => unit.hp <= 0)) break;
 
       if (actor.type === "enemy") {
+        const slotIndex = enemy.boardIndex % enemy.skillBoard.length;
+        const skill = enemy.skillBoard[slotIndex];
+        enemy.boardIndex = (enemy.boardIndex + 1) % enemy.skillBoard.length;
+
+        if (skill.effect === "recover") {
+          const amount = Math.ceil(enemy.power * 1.2);
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+          const text = `${enemy.name}の${skill.name}。HPを${amount}回復。`;
+          logs.push(text);
+          events.push({
+            type: "enemy",
+            enemyName: enemy.name,
+            skillName: skill.name,
+            slotIndex,
+            nextIndex: enemy.boardIndex,
+            text,
+            target: "self",
+            value: amount,
+            tone: "good",
+          });
+          continue;
+        }
+
+        if (skill.effect === "cleave") {
+          const damage = Math.max(1, Math.floor(enemy.power * 0.55));
+          fighters.forEach((target) => {
+            if (target.hp <= 0) return;
+            const absorbed = Math.min(target.tempHp, damage);
+            target.tempHp -= absorbed;
+            target.hp -= damage - absorbed;
+          });
+          const text = `${enemy.name}の${skill.name}。味方全員に${damage}ダメージ。`;
+          logs.push(text);
+          events.push({
+            type: "enemy",
+            enemyName: enemy.name,
+            skillName: skill.name,
+            slotIndex,
+            nextIndex: enemy.boardIndex,
+            text,
+            target: "party",
+            value: damage,
+            tone: "bad",
+          });
+          continue;
+        }
+
         const target = fighters.filter((unit) => unit.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
-        const damage = enemy.power;
+        const damage = skill.effect === "heavy" ? enemy.power + 3 : enemy.power;
         const absorbed = Math.min(target.tempHp, damage);
         target.tempHp -= absorbed;
         target.hp -= damage - absorbed;
-        const text = `${enemy.name}の攻撃。${target.name}に${damage}ダメージ。`;
+        const text = `${enemy.name}の${skill.name}。${target.name}に${damage}ダメージ。`;
         logs.push(text);
-        events.push({ type: "enemy", text, targetUnitId: target.id, value: damage, tone: "bad" });
+        events.push({
+          type: "enemy",
+          enemyName: enemy.name,
+          skillName: skill.name,
+          slotIndex,
+          nextIndex: enemy.boardIndex,
+          text,
+          target: "unit",
+          targetUnitId: target.id,
+          value: damage,
+          tone: "bad",
+        });
         continue;
       }
 
@@ -527,6 +646,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
     units: fighters.map(({ tempHp: _tempHp, ...unit }) => ({ ...unit, hp: Math.max(0, unit.hp) })),
     enemyName: enemy.name,
     enemyMaxHp: enemy.maxHp,
+    enemySkillBoard: enemy.skillBoard,
     events,
   };
 }
@@ -561,6 +681,7 @@ export function App() {
   const [installedTileIndex, setInstalledTileIndex] = useState<number | null>(null);
   const [unitPulse, setUnitPulse] = useState<Record<string, Tone>>({});
   const [activeSkill, setActiveSkill] = useState<{ unitId: string; slotIndex: number } | null>(null);
+  const [activeEnemySkill, setActiveEnemySkill] = useState<number | null>(null);
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
   const [battleView, setBattleView] = useState<BattleView | null>(null);
   const [battleUnits, setBattleUnits] = useState<Unit[]>([]);
@@ -795,6 +916,8 @@ export function App() {
       enemyName: result.enemyName,
       enemyHp: result.enemyMaxHp,
       enemyMaxHp: result.enemyMaxHp,
+      enemySkillBoard: result.enemySkillBoard,
+      enemyBoardIndex: 0,
       message: `${result.enemyName}が現れた`,
       tone: "neutral",
     });
@@ -871,17 +994,44 @@ export function App() {
         continue;
       }
 
-      setBattleView((current) => current && { ...current, message: "敵が攻撃態勢に入る", tone: "neutral" });
-      await wait(battleTiming.enemyIntent);
-      setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
-      setBattleUnits((current) =>
-        current.map((unit) => (unit.id === event.targetUnitId ? { ...unit, hp: Math.max(0, unit.hp - event.value) } : unit)),
+      setActiveEnemySkill(event.slotIndex);
+      setBattleView(
+        (current) =>
+          current && {
+            ...current,
+            message: `${event.enemyName}が「${event.skillName}」のマスへ進む`,
+            activeUnitId: undefined,
+            activeSlot: undefined,
+            enemyBoardIndex: event.slotIndex,
+            tone: "neutral",
+          },
       );
-      addFloatingText("unit", event.targetUnitId, `-${event.value}`, "bad");
-      void flashUnit(event.targetUnitId, "bad");
-      await wait(battleTiming.enemyHit);
-    }
+      await wait(battleTiming.stepToSkill);
+      setBattleView((current) => current && { ...current, message: `${event.skillName} 発動`, tone: event.tone });
+      await wait(battleTiming.skillActivate);
 
+      if (event.target === "self" && event.value) {
+        enemyHp = Math.min(result.enemyMaxHp, enemyHp + event.value);
+        setBattleView((current) => current && { ...current, enemyHp });
+        addFloatingText("enemy", "enemy", `+${event.value}`, "good");
+      } else if (event.target === "party" && event.value) {
+        setBattleUnits((current) =>
+          current.map((unit) => (unit.hp > 0 ? { ...unit, hp: Math.max(0, unit.hp - event.value!) } : unit)),
+        );
+        currentUnits.forEach((unit) => addFloatingText("unit", unit.id, `-${event.value}`, "bad"));
+      } else if (event.targetUnitId && event.value) {
+        setBattleUnits((current) =>
+          current.map((unit) => (unit.id === event.targetUnitId ? { ...unit, hp: Math.max(0, unit.hp - event.value!) } : unit)),
+        );
+        addFloatingText("unit", event.targetUnitId, `-${event.value}`, "bad");
+        void flashUnit(event.targetUnitId, "bad");
+      }
+
+      setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
+      await wait(battleTiming.hpChange);
+      setBattleView((current) => current && { ...current, enemyBoardIndex: event.nextIndex });
+      setActiveEnemySkill(null);
+    }
     setLog((current) => [...result.logs.reverse(), ...current].slice(0, 12));
     setUnits(result.units);
     setBattleView((current) =>
@@ -1264,6 +1414,25 @@ export function App() {
                     <strong>{battleView.enemyName}</strong>
                     <div className="hpBar enemyHp">
                       <i style={{ width: `${Math.max(0, Math.min(100, (battleView.enemyHp / battleView.enemyMaxHp) * 100))}%` }} />
+                    </div>
+                    <div className="battleSkillBoard enemySkillBoard">
+                      {battleView.enemySkillBoard.map((skill, index) => (
+                        <span
+                          key={`enemy-battle-${skill.id}-${index}`}
+                          className={[
+                            "battleSkillSlot",
+                            "enemySkillSlot",
+                            battleView.enemyBoardIndex === index ? "cursor" : "",
+                            activeEnemySkill === index ? "firing" : "",
+                          ].join(" ")}
+                        >
+                          <small>{index + 1}</small>
+                          {skill.name}
+                          {(battleView.enemyBoardIndex === index || activeEnemySkill === index) && (
+                            <i className={`skillPiece enemyPiece ${activeEnemySkill === index ? "strike" : ""}`} />
+                          )}
+                        </span>
+                      ))}
                     </div>
                     {renderFloating("enemy", "enemy")}
                   </div>
