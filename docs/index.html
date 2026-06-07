@@ -4,8 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>育成すごろくRPG Prototype</title>
-    <script type="module" crossorigin src="/SUGOROKU/assets/index-9Z29CMOw.js"></script>
-    <link rel="stylesheet" crossorigin href="/SUGOROKU/assets/index-D7jDECg_.css">
+    <script>
+      setTimeout(function () {
+        var hasBuiltAsset = document.querySelector('script[src^="./assets/"]');
+        var root = document.getElementById("root");
+        if (
+          location.hostname.endsWith("github.io") &&
+          !location.pathname.includes("/docs/") &&
+          !hasBuiltAsset &&
+          root &&
+          !root.hasChildNodes()
+        ) {
+          location.replace(location.pathname.replace(/\/?$/, "/docs/"));
+        }
+      }, 1000);
+    </script>
+    <script type="module" crossorigin src="./assets/index-9Z29CMOw.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-D7jDECg_.css">
   </head>
   <body>
     <div id="root"></div>
