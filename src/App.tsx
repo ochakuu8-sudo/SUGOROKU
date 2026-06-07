@@ -701,6 +701,7 @@ export function App() {
   const [inventoryPulse, setInventoryPulse] = useState(false);
   const [coinPulse, setCoinPulse] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  const [skillPopup, setSkillPopup] = useState<Skill | null>(null);
 
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
   const locked = phase === "animating" || phase === "battle";
@@ -1257,6 +1258,7 @@ export function App() {
     setInventoryPulse(false);
     setCoinPulse(false);
     setShowLog(false);
+    setSkillPopup(null);
     setLog(["ラン開始。まずは勇者1体で盤面を育てる。"]);
   }
 
@@ -1268,6 +1270,75 @@ export function App() {
           {entry.text}
         </span>
       ));
+  }
+
+  function renderUnitPanel(
+    unit: Unit,
+    options: {
+      className?: string;
+      active?: boolean;
+      onSkillSlot?: (slotIndex: number) => void;
+      showHp?: boolean;
+    } = {},
+  ) {
+    const showHp = options.showHp ?? true;
+    return (
+      <article
+        className={[
+          "unitInfoPanel",
+          options.className ?? "",
+          options.active ? "acting" : "",
+          unitPulse[unit.id] ? `pulse-${unitPulse[unit.id]}` : "",
+        ].join(" ")}
+      >
+        <div className="unitInfoHead">
+          <div>
+            <h3>{unit.name}</h3>
+            <p>{unit.job}</p>
+          </div>
+          {showHp && <span>{unit.hp}/{maxHp(unit)}</span>}
+        </div>
+        {showHp && (
+          <div className="hpBar">
+            <i style={{ width: `${Math.max(0, Math.min(100, (unit.hp / maxHp(unit)) * 100))}%` }} />
+          </div>
+        )}
+        <div className="unitInfoStats">
+          <span>体 {unit.stats.vitality}</span>
+          <span>威 {unit.stats.power}</span>
+          <span>敏 {unit.stats.agility}</span>
+        </div>
+        <div className="unitInfoSkillBoard">
+          {unit.skillBoard.map((skill, index) => {
+            const firing = activeSkill?.unitId === unit.id && activeSkill.slotIndex === index;
+            return (
+              <button
+                key={`${unit.id}-info-${skill.id}-${index}`}
+                type="button"
+                className={[
+                  "unitInfoSkill",
+                  unit.boardIndex === index ? "next" : "",
+                  firing ? "firing" : "",
+                ].join(" ")}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (options.onSkillSlot && selectedSkillIndex !== null && !locked) {
+                    options.onSkillSlot(index);
+                    return;
+                  }
+                  setSkillPopup(skill);
+                }}
+                title={skill.description}
+              >
+                <small>{index + 1}</small>
+                <span>{skill.name}</span>
+              </button>
+            );
+          })}
+        </div>
+        {renderFloating("unit", unit.id)}
+      </article>
+    );
   }
 
   return (
@@ -1370,43 +1441,23 @@ export function App() {
 
       <section className="units">
         {units.map((unit) => (
-          <article key={unit.id} className={`unitCard ${unitPulse[unit.id] ? `pulse-${unitPulse[unit.id]}` : ""}`}>
-            <div className="unitHeader">
-              <div>
-                <h3>{unit.name}</h3>
-                <p>{unit.job}</p>
-              </div>
-              <span>
-                {unit.hp}/{maxHp(unit)}
-              </span>
-            </div>
-            <div className="hpBar">
-              <i style={{ width: `${Math.max(0, Math.min(100, (unit.hp / maxHp(unit)) * 100))}%` }} />
-            </div>
-            <div className="stats">
-              <span>体力 {unit.stats.vitality}</span>
-              <span>威力 {unit.stats.power}</span>
-              <span>機敏 {unit.stats.agility}</span>
-            </div>
-            <div className="skillBoard">
-              {unit.skillBoard.map((skill, index) => (
-                <button
-                  key={`${unit.id}-${skill.id}-${index}`}
-                  className={`skillSlot ${unit.boardIndex === index ? "next" : ""} ${
-                    activeSkill?.unitId === unit.id && activeSkill.slotIndex === index ? "firing" : ""
-                  }`}
-                  onClick={() => phase === "prep" && void installSkill(unit.id, index)}
-                  disabled={phase !== "prep" || selectedSkillIndex === null || locked}
-                  title={skill.description}
-                >
-                  {skill.name}
-                </button>
-              ))}
-            </div>
-            {renderFloating("unit", unit.id)}
-          </article>
+          <div key={unit.id}>{renderUnitPanel(unit, { onSkillSlot: (slotIndex) => void installSkill(unit.id, slotIndex) })}</div>
         ))}
       </section>
+
+      {skillPopup && (
+        <div className="skillPopupLayer" onClick={() => setSkillPopup(null)}>
+          <aside className="skillPopup" onClick={(event) => event.stopPropagation()}>
+            <div className="modalHeader">
+              <h2>{skillPopup.name}</h2>
+              <button className="ghostButton" onClick={() => setSkillPopup(null)}>
+                閉じる
+              </button>
+            </div>
+            <p>{skillPopup.description}</p>
+          </aside>
+        </div>
+      )}
 
       {(showLog ||
         phase === "chooseTraining" ||
@@ -1442,14 +1493,23 @@ export function App() {
               <>
                 <h2>{statLabels[pendingTraining.stat]}訓練</h2>
                 <p>強化するユニットを選択。</p>
-                <div className="choiceGrid">
+                <div className="unitPanelGrid">
                   {units.map((unit) => (
-                    <button key={unit.id} onClick={() => void applyTraining(unit.id)} className="choiceButton">
-                      <strong>{unit.name}</strong>
-                      <span>
+                    <div
+                      key={unit.id}
+                      className="unitChoiceCard"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => void applyTraining(unit.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") void applyTraining(unit.id);
+                      }}
+                    >
+                      {renderUnitPanel(unit, { className: "selectable", showHp: true })}
+                      <span className="unitChoiceBadge">
                         {statLabels[pendingTraining.stat]} +{pendingTraining.amount}
                       </span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </>
@@ -1507,36 +1567,7 @@ export function App() {
                   </div>
                   <div className="battleUnits">
                     {battleUnits.map((unit) => (
-                      <article key={unit.id} className={`battleUnitCard ${battleView.activeUnitId === unit.id ? "acting" : ""}`}>
-                        <div className="battleUnitHeader">
-                          <strong>{unit.name}</strong>
-                          <span>
-                            {unit.hp}/{maxHp(unit)}
-                          </span>
-                        </div>
-                        <div className="hpBar">
-                          <i style={{ width: `${Math.max(0, Math.min(100, (unit.hp / maxHp(unit)) * 100))}%` }} />
-                        </div>
-                        <div className="battleSkillBoard">
-                          {unit.skillBoard.map((skill, index) => (
-                            <span
-                              key={`${unit.id}-battle-${skill.id}-${index}`}
-                              className={[
-                                "battleSkillSlot",
-                                unit.boardIndex === index ? "cursor" : "",
-                                activeSkill?.unitId === unit.id && activeSkill.slotIndex === index ? "firing" : "",
-                              ].join(" ")}
-                            >
-                              <small>{index + 1}</small>
-                              {skill.name}
-                              {(unit.boardIndex === index || (activeSkill?.unitId === unit.id && activeSkill.slotIndex === index)) && (
-                                <i className={`skillPiece ${activeSkill?.unitId === unit.id && activeSkill.slotIndex === index ? "strike" : ""}`} />
-                              )}
-                            </span>
-                          ))}
-                        </div>
-                        {renderFloating("unit", unit.id)}
-                      </article>
+                      <div key={unit.id}>{renderUnitPanel(unit, { className: "battleInfo", active: battleView.activeUnitId === unit.id })}</div>
                     ))}
                   </div>
                   <p>{battleView.message}</p>
@@ -1684,20 +1715,12 @@ export function App() {
                     <p>選択中: {skillInventory[selectedSkillIndex].name}</p>
                     <div className="prepSkillTargets">
                       {units.map((unit) => (
-                        <article key={`prep-skill-${unit.id}`} className="prepUnitTarget">
-                          <div className="prepUnitHeader">
-                            <strong>{unit.name}</strong>
-                            <span>{unit.job}</span>
-                          </div>
-                          <div className="prepSkillSlots">
-                            {unit.skillBoard.map((skill, index) => (
-                              <button key={`${unit.id}-prep-slot-${index}`} onClick={() => void installSkill(unit.id, index)}>
-                                <small>{index + 1}</small>
-                                {skill.name}
-                              </button>
-                            ))}
-                          </div>
-                        </article>
+                        <div key={`prep-skill-${unit.id}`}>
+                          {renderUnitPanel(unit, {
+                            className: "selectable",
+                            onSkillSlot: (slotIndex) => void installSkill(unit.id, slotIndex),
+                          })}
+                        </div>
                       ))}
                     </div>
                   </div>

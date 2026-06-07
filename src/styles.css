@@ -456,6 +456,189 @@ h3 {
   margin: 18px auto 0;
 }
 
+.units > div,
+.battleUnits > div,
+.prepSkillTargets > div,
+.unitPanelGrid > div {
+  min-width: 0;
+}
+
+.unitInfoPanel {
+  position: relative;
+  display: grid;
+  grid-template-rows: 32px 9px 30px 42px;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  min-height: 132px;
+  padding: 10px;
+  border: 1px solid #d7cfbd;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 16px 38px rgba(68, 54, 33, 0.12);
+  overflow: hidden;
+  animation: unit-enter 0.36s ease both;
+}
+
+.unitInfoPanel.selectable {
+  border-color: #c9c2b1;
+  cursor: pointer;
+}
+
+.unitInfoPanel.acting {
+  border-color: #1f575d;
+  animation: battle-unit-acting 0.42s ease;
+}
+
+.unitInfoPanel.pulse-good {
+  animation: unit-good 0.42s ease;
+}
+
+.unitInfoPanel.pulse-bad {
+  animation: unit-bad 0.42s ease;
+}
+
+.unitInfoPanel.pulse-rare,
+.unitInfoPanel.pulse-neutral {
+  animation: unit-good 0.42s ease;
+}
+
+.unitInfoHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.unitInfoHead h3 {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unitInfoHead p {
+  overflow: hidden;
+  margin-top: 3px;
+  color: #677376;
+  font-size: 11px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unitInfoHead span {
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.unitInfoStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.unitInfoStats span {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 2px;
+  border-radius: 7px;
+  background: #f2f5f1;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.unitInfoSkillBoard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+}
+
+.unitInfoSkill {
+  position: relative;
+  display: grid;
+  grid-template-rows: 10px 1fr;
+  place-items: center;
+  min-width: 0;
+  min-height: 40px;
+  padding: 2px;
+  border: 1px solid #c9c2b1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #273137;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.unitInfoSkill small {
+  color: #879194;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.unitInfoSkill span {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.unitInfoSkill.next {
+  border-color: #d23f31;
+  background: #fff1ee;
+}
+
+.unitInfoSkill.firing {
+  border-color: #1f575d;
+  background: #e4f1ed;
+  animation: skill-fire 0.42s ease;
+}
+
+.unitPanelGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.unitChoiceCard {
+  position: relative;
+  min-width: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.unitChoiceCard:focus-visible {
+  outline: 2px solid #1f575d;
+  outline-offset: 3px;
+}
+
+.unitChoiceBadge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: white;
+  background: #1f575d;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .unitCard {
   position: relative;
   padding: 14px;
@@ -559,6 +742,37 @@ h3 {
   overflow: auto;
   padding: 20px;
   animation: modal-in 0.24s ease both;
+}
+
+.skillPopupLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(22, 28, 31, 0.22);
+}
+
+.skillPopup {
+  width: min(320px, 100%);
+  padding: 14px;
+  border: 1px solid #d7cfbd;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 46px rgba(30, 38, 48, 0.24);
+  animation: modal-in 0.18s ease both;
+}
+
+.skillPopup h2 {
+  font-size: 15px;
+}
+
+.skillPopup p {
+  margin-top: 10px;
+  color: #3c464a;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .modal p {
@@ -1934,6 +2148,68 @@ h3 {
     min-width: 0;
     min-height: 0;
     padding: 5px;
+  }
+
+  .unitInfoPanel {
+    grid-template-rows: 24px 5px 17px 22px;
+    gap: 4px;
+    min-height: 82px;
+    padding: 5px;
+    border-radius: 6px;
+  }
+
+  .unitInfoHead {
+    gap: 4px;
+  }
+
+  .unitInfoHead h3 {
+    font-size: 11px;
+  }
+
+  .unitInfoHead p,
+  .unitInfoHead span {
+    margin-top: 1px;
+    font-size: 9px;
+  }
+
+  .unitInfoStats {
+    gap: 2px;
+  }
+
+  .unitInfoStats span {
+    min-height: 17px;
+    padding: 2px 1px;
+    border-radius: 5px;
+    font-size: 8px;
+  }
+
+  .unitInfoSkillBoard {
+    gap: 2px;
+  }
+
+  .unitInfoSkill {
+    grid-template-rows: 7px 1fr;
+    min-height: 22px;
+    padding: 1px;
+    border-radius: 5px;
+    font-size: 7px;
+  }
+
+  .unitInfoSkill small {
+    font-size: 7px;
+  }
+
+  .unitPanelGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 10px;
+  }
+
+  .unitChoiceBadge {
+    right: 5px;
+    bottom: 5px;
+    padding: 2px 5px;
+    font-size: 9px;
   }
 
   .unitHeader {
