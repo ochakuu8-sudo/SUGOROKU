@@ -588,6 +588,27 @@ h3 {
   animation: reward-chosen 0.3s ease both;
 }
 
+.tileMiniIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #d7cfbd;
+  border-radius: 7px;
+  background: #f8f6ee;
+  color: #1f575d;
+}
+
+.tileMiniIcon.treasure,
+.tileMiniIcon.training {
+  color: #8e6b1f;
+}
+
+.tileMiniIcon.shop,
+.tileMiniIcon.skill {
+  color: #8e2d2d;
+}
+
 .battleModal {
   width: min(860px, 100%);
 }

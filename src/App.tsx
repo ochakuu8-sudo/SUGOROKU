@@ -20,7 +20,18 @@ import { useMemo, useState } from "react";
 type StatKey = "vitality" | "power" | "agility";
 type TileType = "empty" | "training" | "item" | "treasure" | "skill" | "shop" | "inn";
 type Scope = "single" | "all";
-type Phase = "explore" | "animating" | "chooseTraining" | "battle" | "reward" | "recruit" | "prep" | "shop" | "gameover" | "clear";
+type Phase =
+  | "explore"
+  | "animating"
+  | "chooseTraining"
+  | "chooseTile"
+  | "battle"
+  | "reward"
+  | "recruit"
+  | "prep"
+  | "shop"
+  | "gameover"
+  | "clear";
 type Tone = "good" | "bad" | "neutral" | "rare";
 
 type Stats = Record<StatKey, number>;
@@ -255,18 +266,7 @@ const itemPool: Item[] = [
 
 const emptyTile = (id: string): Tile => ({ id, name: "空き", type: "empty", level: 1 });
 
-const initialBoard: Tile[] = [
-  { id: "t-v-single", name: "体力訓練", type: "training", stat: "vitality", scope: "single", level: 1 },
-  { id: "t-p-single", name: "威力訓練", type: "training", stat: "power", scope: "single", level: 1 },
-  { id: "t-a-single", name: "機敏訓練", type: "training", stat: "agility", scope: "single", level: 1 },
-  { id: "item", name: "アイテム", type: "item", level: 1 },
-  { id: "treasure", name: "宝箱", type: "treasure", level: 1, rare: true },
-  { id: "skill", name: "戦闘訓練", type: "skill", level: 1 },
-  { id: "shop", name: "SHOP", type: "shop", level: 1 },
-  { id: "inn", name: "宿屋", type: "inn", level: 1 },
-  emptyTile("empty-1"),
-  emptyTile("empty-2"),
-];
+const initialBoard: Tile[] = Array.from({ length: 10 }, (_, index) => emptyTile(`empty-${index + 1}`));
 
 const initialHero: Unit = {
   id: "hero",
@@ -346,8 +346,8 @@ function randomFrom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-function uniqueRewards(count: number): Reward[] {
-  const tileChoices = [
+function tileChoicePool(): Tile[] {
+  return [
     makeTrainingTile("vitality", "single"),
     makeTrainingTile("power", "single"),
     makeTrainingTile("agility", "single"),
@@ -358,6 +358,16 @@ function uniqueRewards(count: number): Reward[] {
     cloneTile({ id: "skill-reward", name: "戦闘訓練", type: "skill", level: 1 }),
     cloneTile({ id: "treasure-reward", name: "宝箱", type: "treasure", level: 1, rare: true }),
   ];
+}
+
+function tileChoices(count: number): Tile[] {
+  return tileChoicePool()
+    .sort(() => Math.random() - 0.5)
+    .slice(0, count);
+}
+
+function uniqueRewards(count: number): Reward[] {
+  const tileChoices = tileChoicePool();
   const rewards: Reward[] = [];
   while (rewards.length < count) {
     const roll = Math.random();
@@ -666,6 +676,8 @@ export function App() {
   const [lastRoll, setLastRoll] = useState<number | null>(null);
   const [fixedRoll, setFixedRoll] = useState<number | null>(null);
   const [pendingTraining, setPendingTraining] = useState<{ stat: StatKey; amount: number } | null>(null);
+  const [pendingTileIndex, setPendingTileIndex] = useState<number | null>(null);
+  const [pendingTileChoices, setPendingTileChoices] = useState<Tile[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [shopOffers, setShopOffers] = useState<Tile[]>([]);
   const [recruits, setRecruits] = useState<Omit<Unit, "hp" | "boardIndex">[]>([]);
@@ -794,7 +806,10 @@ export function App() {
     await flashTile(tileIndex, tile.rare ? "rare" : "neutral", tile.name);
 
     if (tile.type === "empty") {
-      await finishTurn();
+      setPendingTileIndex(tileIndex);
+      setPendingTileChoices(tileChoices(3));
+      setBanner(null);
+      setPhase("chooseTile");
       return;
     }
 
@@ -1081,6 +1096,20 @@ export function App() {
     setPhase("reward");
   }
 
+  async function chooseTileEffect(tile: Tile, index: number) {
+    if (phase !== "chooseTile" || pendingTileIndex === null || locked) return;
+    const boardIndex = pendingTileIndex;
+    setRewardPulse(index);
+    await wait(260);
+    setBoard((current) => current.map((entry, entryIndex) => (entryIndex === boardIndex ? tile : entry)));
+    setPendingTileIndex(null);
+    setPendingTileChoices([]);
+    setRewardPulse(null);
+    setPhase("animating");
+    pushLog(`空きマスに「${tile.name}」を設定。`);
+    await resolveTile(tile, boardIndex);
+  }
+
   async function chooseReward(reward: Reward, index: number) {
     if (locked) return;
     setRewardPulse(index);
@@ -1205,6 +1234,8 @@ export function App() {
     setLastRoll(null);
     setFixedRoll(null);
     setPendingTraining(null);
+    setPendingTileIndex(null);
+    setPendingTileChoices([]);
     setRewards([]);
     setShopOffers([]);
     setRecruits([]);
@@ -1380,6 +1411,7 @@ export function App() {
       </section>
 
       {(phase === "chooseTraining" ||
+        phase === "chooseTile" ||
         phase === "battle" ||
         phase === "reward" ||
         phase === "recruit" ||
@@ -1400,6 +1432,26 @@ export function App() {
                       <span>
                         {statLabels[pendingTraining.stat]} +{pendingTraining.amount}
                       </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {phase === "chooseTile" && pendingTileIndex !== null && (
+              <>
+                <h2>マス効果選択</h2>
+                <p>{pendingTileIndex + 1}マス目に置く効果を選択。選んだ効果は今すぐ1回発動します。</p>
+                <div className="choiceGrid rewardGrid">
+                  {pendingTileChoices.map((tile, index) => (
+                    <button
+                      key={`${tile.id}-${index}`}
+                      className={`choiceButton rewardCard ${rewardPulse === index ? "chosen" : ""}`}
+                      onClick={() => void chooseTileEffect(tile, index)}
+                    >
+                      <span className={`tileMiniIcon ${tile.type}`}>{tileIcon(tile.type)}</span>
+                      <strong>{tile.name}</strong>
+                      <span>{getTileDescription(tile)}</span>
                     </button>
                   ))}
                 </div>
