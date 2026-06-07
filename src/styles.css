@@ -1,0 +1,470 @@
+:root {
+  color: #1e2630;
+  background: #f4f1e8;
+  font-family:
+    Inter, "Yu Gothic UI", "Hiragino Sans", "Meiryo", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button {
+  font: inherit;
+}
+
+.app {
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(234, 244, 235, 0.92), rgba(246, 241, 225, 0.9)),
+    repeating-linear-gradient(45deg, rgba(31, 87, 93, 0.06) 0 12px, transparent 12px 24px);
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto 18px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: 18px;
+}
+
+h3 {
+  font-size: 16px;
+}
+
+.topbar p {
+  margin-top: 6px;
+  color: #5f6b6e;
+}
+
+.statusStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.statusStrip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #d8d0be;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.74);
+  font-weight: 700;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 18px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.boardPanel,
+.sidePanel,
+.unitCard,
+.modal {
+  border: 1px solid #d7cfbd;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 16px 38px rgba(68, 54, 33, 0.12);
+}
+
+.boardPanel {
+  padding: 18px;
+}
+
+.boardHeader,
+.runControls,
+.unitHeader,
+.prepActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.primaryButton,
+.ghostButton,
+.inventoryButton,
+.choiceButton,
+.tile,
+.skillSlot {
+  border: 1px solid #c9c2b1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.primaryButton,
+.ghostButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  font-weight: 800;
+}
+
+.primaryButton {
+  color: white;
+  border-color: #1f575d;
+  background: #1f575d;
+}
+
+.ghostButton {
+  color: #1f575d;
+  background: white;
+}
+
+.primaryButton:disabled,
+.ghostButton:disabled,
+.tile:disabled,
+.skillSlot:disabled,
+.inventoryButton:disabled,
+.choiceButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.boardGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(110px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.tile {
+  position: relative;
+  display: grid;
+  grid-template-rows: 20px 24px 1fr 18px;
+  align-items: center;
+  justify-items: center;
+  min-height: 118px;
+  padding: 8px;
+  color: #223039;
+  background: #fcfbf6;
+}
+
+.tile:hover:not(:disabled),
+.skillSlot:hover:not(:disabled),
+.inventoryButton:hover:not(:disabled),
+.choiceButton:hover:not(:disabled),
+.primaryButton:hover:not(:disabled),
+.ghostButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.tile.active {
+  border-color: #d23f31;
+  outline: 3px solid rgba(210, 63, 49, 0.2);
+}
+
+.tile.training {
+  background: #eef7ef;
+}
+
+.tile.item {
+  background: #ecf4fb;
+}
+
+.tile.treasure {
+  background: #fff3c7;
+}
+
+.tile.skill {
+  background: #f3eefb;
+}
+
+.tile.shop {
+  background: #f7efe5;
+}
+
+.tile.inn {
+  background: #f1f5df;
+}
+
+.tileIndex {
+  justify-self: start;
+  color: #6d787c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.tileIcon {
+  color: #1f575d;
+}
+
+.tile strong,
+.tile small {
+  text-align: center;
+}
+
+.runControls {
+  flex-wrap: wrap;
+  margin-top: 14px;
+  color: #5f6b6e;
+  font-weight: 700;
+}
+
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  min-height: 420px;
+}
+
+.itemList {
+  display: grid;
+  gap: 8px;
+}
+
+.inventoryButton {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px;
+  text-align: left;
+  background: #ffffff;
+}
+
+.inventoryButton span {
+  display: grid;
+  gap: 2px;
+}
+
+.inventoryButton small,
+.choiceButton small {
+  color: #677376;
+  line-height: 1.35;
+}
+
+.inventoryButton.selected {
+  border-color: #1f575d;
+  background: #e4f1ed;
+}
+
+.emptyText {
+  color: #778184;
+  font-size: 14px;
+}
+
+.logList {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 20px;
+  color: #3c464a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.units {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 1280px;
+  margin: 18px auto 0;
+}
+
+.unitCard {
+  padding: 14px;
+}
+
+.unitHeader p {
+  margin-top: 2px;
+  color: #677376;
+  font-size: 13px;
+}
+
+.unitHeader span {
+  font-weight: 800;
+}
+
+.hpBar {
+  overflow: hidden;
+  height: 9px;
+  margin: 12px 0;
+  border-radius: 99px;
+  background: #e1ddd1;
+}
+
+.hpBar i {
+  display: block;
+  height: 100%;
+  background: #d23f31;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.stats span {
+  min-height: 30px;
+  padding: 6px;
+  border-radius: 8px;
+  background: #f2f5f1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.skillBoard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.skillSlot {
+  min-height: 42px;
+  padding: 8px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.skillSlot.next {
+  border-color: #d23f31;
+  background: #fff1ee;
+}
+
+.modalLayer {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(22, 28, 31, 0.42);
+  z-index: 10;
+}
+
+.modal {
+  width: min(760px, 100%);
+  max-height: min(84vh, 760px);
+  overflow: auto;
+  padding: 20px;
+}
+
+.modal p {
+  margin-top: 6px;
+  color: #5f6b6e;
+}
+
+.choiceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.choiceButton {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-height: 118px;
+  padding: 12px;
+  text-align: left;
+  background: #ffffff;
+}
+
+.choiceButton span {
+  color: #4f5b5f;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.prepColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.prepColumns > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.prepActions {
+  margin-top: 16px;
+}
+
+.fullWidth {
+  width: 100%;
+  margin-top: 14px;
+}
+
+@media (max-width: 980px) {
+  .layout,
+  .units {
+    grid-template-columns: 1fr;
+  }
+
+  .sidePanel {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .app {
+    padding: 14px;
+  }
+
+  .topbar {
+    display: grid;
+  }
+
+  .statusStrip {
+    justify-content: start;
+  }
+
+  .boardGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .choiceGrid,
+  .prepColumns {
+    grid-template-columns: 1fr;
+  }
+}
