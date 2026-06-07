@@ -22,11 +22,35 @@ button {
 }
 
 .app {
+  position: relative;
   min-height: 100vh;
   padding: 24px;
   background:
     linear-gradient(135deg, rgba(234, 244, 235, 0.92), rgba(246, 241, 225, 0.9)),
     repeating-linear-gradient(45deg, rgba(31, 87, 93, 0.06) 0 12px, transparent 12px 24px);
+}
+
+.app.locked button {
+  touch-action: manipulation;
+}
+
+.bannerPulse {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 20;
+  pointer-events: none;
+  min-width: 160px;
+  padding: 12px 18px;
+  border: 1px solid rgba(31, 87, 93, 0.28);
+  border-radius: 8px;
+  color: #163338;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 42px rgba(30, 38, 48, 0.2);
+  text-align: center;
+  font-weight: 900;
+  transform: translate(-50%, -50%);
+  animation: banner-pop 0.52s ease both;
 }
 
 .topbar {
@@ -71,6 +95,7 @@ h3 {
 }
 
 .statusStrip span {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -80,6 +105,10 @@ h3 {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.74);
   font-weight: 700;
+}
+
+.statusStrip span.coinPulse {
+  animation: coin-pulse 0.42s ease;
 }
 
 .layout {
@@ -146,6 +175,18 @@ h3 {
   background: #1f575d;
 }
 
+.diceButton svg {
+  transform-origin: center;
+}
+
+.diceButton.rolling svg {
+  animation: dice-spin 0.42s linear infinite;
+}
+
+.diceButton.rolling {
+  animation: button-shake 0.38s ease infinite;
+}
+
 .ghostButton {
   color: #1f575d;
   background: white;
@@ -178,6 +219,17 @@ h3 {
   padding: 8px;
   color: #223039;
   background: #fcfbf6;
+  overflow: hidden;
+}
+
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9), transparent 55%);
+  opacity: 0;
+  transform: scale(0.4);
 }
 
 .tile:hover:not(:disabled),
@@ -192,6 +244,26 @@ h3 {
 .tile.active {
   border-color: #d23f31;
   outline: 3px solid rgba(210, 63, 49, 0.2);
+}
+
+.tile.moving {
+  border-color: #1f575d;
+  animation: tile-step 0.2s ease;
+}
+
+.tile.arrived {
+  border-color: #d23f31;
+  animation: tile-arrive 0.42s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.tile.effect::after,
+.tile.installing::after {
+  animation: tile-spark 0.48s ease;
+}
+
+.tile.installing {
+  border-color: #1f575d;
+  animation: tile-install 0.46s ease;
 }
 
 .tile.training {
@@ -242,6 +314,7 @@ h3 {
 }
 
 .sidePanel {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -250,11 +323,17 @@ h3 {
 }
 
 .itemList {
+  position: relative;
   display: grid;
   gap: 8px;
 }
 
+.itemList.inventoryPulse {
+  animation: inventory-pulse 0.42s ease;
+}
+
 .inventoryButton {
+  position: relative;
   display: grid;
   grid-template-columns: 24px 1fr;
   gap: 8px;
@@ -279,6 +358,7 @@ h3 {
 .inventoryButton.selected {
   border-color: #1f575d;
   background: #e4f1ed;
+  animation: selected-card 0.9s ease infinite;
 }
 
 .emptyText {
@@ -296,6 +376,10 @@ h3 {
   line-height: 1.45;
 }
 
+.logList .newLog {
+  animation: log-in 0.36s ease both;
+}
+
 .units {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -305,7 +389,23 @@ h3 {
 }
 
 .unitCard {
+  position: relative;
   padding: 14px;
+  overflow: hidden;
+  animation: unit-enter 0.36s ease both;
+}
+
+.unitCard.pulse-good {
+  animation: unit-good 0.42s ease;
+}
+
+.unitCard.pulse-bad {
+  animation: unit-bad 0.42s ease;
+}
+
+.unitCard.pulse-rare,
+.unitCard.pulse-neutral {
+  animation: unit-good 0.42s ease;
 }
 
 .unitHeader p {
@@ -330,6 +430,7 @@ h3 {
   display: block;
   height: 100%;
   background: #d23f31;
+  transition: width 0.36s ease;
 }
 
 .stats {
@@ -368,6 +469,12 @@ h3 {
   background: #fff1ee;
 }
 
+.skillSlot.firing {
+  border-color: #1f575d;
+  background: #e4f1ed;
+  animation: skill-fire 0.42s ease;
+}
+
 .modalLayer {
   position: fixed;
   inset: 0;
@@ -383,6 +490,7 @@ h3 {
   max-height: min(84vh, 760px);
   overflow: auto;
   padding: 20px;
+  animation: modal-in 0.24s ease both;
 }
 
 .modal p {
@@ -398,6 +506,7 @@ h3 {
 }
 
 .choiceButton {
+  position: relative;
   display: grid;
   gap: 6px;
   align-content: start;
@@ -405,6 +514,102 @@ h3 {
   padding: 12px;
   text-align: left;
   background: #ffffff;
+}
+
+.rewardGrid .choiceButton {
+  animation: reward-card-in 0.34s ease both;
+}
+
+.rewardGrid .choiceButton:nth-child(2) {
+  animation-delay: 0.06s;
+}
+
+.rewardGrid .choiceButton:nth-child(3) {
+  animation-delay: 0.12s;
+}
+
+.rewardCard.chosen {
+  border-color: #1f575d;
+  animation: reward-chosen 0.3s ease both;
+}
+
+.battleModal {
+  width: min(640px, 100%);
+}
+
+.battleStage {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.battleStage p {
+  min-height: 44px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f8f6ee;
+  font-weight: 800;
+  animation: log-in 0.24s ease both;
+}
+
+.enemyCard {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #c9c2b1;
+  border-radius: 8px;
+  background: #fff7f2;
+  overflow: hidden;
+}
+
+.enemyCard strong {
+  font-size: 18px;
+}
+
+.enemyHp i {
+  background: #8e2d2d;
+}
+
+.battleStage.bad .enemyCard {
+  animation: enemy-hit 0.26s ease;
+}
+
+.battleStage.good .enemyCard {
+  animation: unit-good 0.3s ease;
+}
+
+.floatText {
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  z-index: 5;
+  pointer-events: none;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: white;
+  background: #4f5b5f;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: float-up 0.9s ease-out both;
+}
+
+.floatText.good {
+  background: #23734f;
+}
+
+.floatText.bad {
+  background: #d23f31;
+}
+
+.floatText.rare {
+  background: #b47c12;
+}
+
+.floatText.neutral {
+  background: #1f575d;
 }
 
 .choiceButton span {
@@ -941,6 +1146,12 @@ h3 {
     padding: 10px;
   }
 
+  .bannerPulse {
+    min-width: 128px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
   .modal h2 {
     font-size: 15px;
   }
@@ -979,5 +1190,250 @@ h3 {
 
   .prepActions {
     margin-top: 8px;
+  }
+}
+
+@keyframes banner-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.9);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes dice-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes button-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  35% {
+    transform: translateX(-1px);
+  }
+  70% {
+    transform: translateX(1px);
+  }
+}
+
+@keyframes tile-step {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes tile-arrive {
+  0% {
+    transform: scale(1);
+  }
+  55% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes tile-spark {
+  0% {
+    opacity: 0;
+    transform: scale(0.25) rotate(0deg);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(0.95) rotate(20deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35) rotate(30deg);
+  }
+}
+
+@keyframes tile-install {
+  0% {
+    transform: scale(0.98);
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes inventory-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes selected-card {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(31, 87, 93, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(31, 87, 93, 0.14);
+  }
+}
+
+@keyframes log-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes unit-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes unit-good {
+  0% {
+    box-shadow: 0 16px 38px rgba(68, 54, 33, 0.12);
+  }
+  50% {
+    border-color: #23734f;
+    box-shadow: 0 0 0 4px rgba(35, 115, 79, 0.16);
+  }
+  100% {
+    box-shadow: 0 16px 38px rgba(68, 54, 33, 0.12);
+  }
+}
+
+@keyframes unit-bad {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    border-color: #d23f31;
+    transform: translateX(-2px);
+  }
+  60% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes skill-fire {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.07);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes reward-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reward-chosen {
+  to {
+    transform: scale(1.04);
+    opacity: 0.85;
+  }
+}
+
+@keyframes enemy-hit {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  35% {
+    transform: translateX(3px);
+  }
+  70% {
+    transform: translateX(-3px);
+  }
+}
+
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.94);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -24px) scale(1.03);
+  }
+}
+
+@keyframes coin-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
