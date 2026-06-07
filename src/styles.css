@@ -113,7 +113,7 @@ h3 {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
   gap: 18px;
   max-width: 1280px;
   margin: 0 auto;
@@ -374,7 +374,7 @@ h3 {
   flex-direction: column;
   gap: 10px;
   padding: 16px;
-  min-height: 420px;
+  min-height: 0;
 }
 
 .itemList {
@@ -433,6 +433,19 @@ h3 {
 
 .logList .newLog {
   animation: log-in 0.36s ease both;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logModalList {
+  max-height: min(60vh, 420px);
+  margin-top: 14px;
+  overflow: auto;
 }
 
 .units {
@@ -1704,6 +1717,347 @@ h3 {
   }
   100% {
     transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 900px) {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    min-width: 0;
+  }
+
+  .app {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 6px;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    padding: 7px;
+  }
+
+  .topbar {
+    align-items: center;
+    gap: 8px;
+    max-width: none;
+    margin: 0;
+  }
+
+  .topbar p {
+    display: none;
+  }
+
+  h1 {
+    font-size: 17px;
+    line-height: 1;
+  }
+
+  .statusStrip {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .statusStrip span {
+    min-height: 24px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .statusStrip svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .boardPanel,
+  .sidePanel,
+  .unitCard {
+    border-radius: 6px;
+    box-shadow: 0 6px 14px rgba(68, 54, 33, 0.1);
+  }
+
+  .boardPanel {
+    min-height: 0;
+    overflow: hidden;
+    padding: 6px;
+  }
+
+  .boardHeader {
+    gap: 6px;
+  }
+
+  .boardHeader h2,
+  .sidePanel h2 {
+    font-size: 12px;
+  }
+
+  .primaryButton,
+  .ghostButton {
+    min-height: 28px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  .dieCube {
+    width: 21px;
+    height: 21px;
+    border-radius: 5px;
+    font-size: 10px;
+  }
+
+  .boardGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    min-height: 0;
+    margin-top: 5px;
+  }
+
+  .tile {
+    grid-template-rows: 10px 14px 1fr 10px;
+    min-height: clamp(48px, 8vh, 64px);
+    padding: 2px;
+    border-radius: 6px;
+  }
+
+  .tileIcon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .tile strong {
+    font-size: 9px;
+    line-height: 1.05;
+  }
+
+  .tile small,
+  .tileIndex {
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  .boardPiece {
+    right: 4px;
+    bottom: 4px;
+    width: 15px;
+    height: 15px;
+    border-width: 2px;
+  }
+
+  .runControls {
+    flex-wrap: nowrap;
+    gap: 4px;
+    min-height: 0;
+    margin-top: 5px;
+    font-size: 10px;
+  }
+
+  .runControls span {
+    white-space: nowrap;
+  }
+
+  .sidePanel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    min-height: 0;
+    padding: 5px 6px;
+    overflow: hidden;
+  }
+
+  .itemList {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .inventoryButton {
+    grid-template-columns: 14px minmax(0, 1fr);
+    gap: 4px;
+    min-width: 70px;
+    min-height: 28px;
+    padding: 3px 5px;
+    border-radius: 6px;
+  }
+
+  .inventoryButton svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .inventoryButton strong {
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inventoryButton small {
+    display: none;
+  }
+
+  .emptyText {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .units {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .unitCard {
+    min-width: 0;
+    min-height: 0;
+    padding: 5px;
+  }
+
+  .unitHeader {
+    gap: 4px;
+  }
+
+  .unitHeader h3 {
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .unitHeader p,
+  .unitHeader span {
+    margin-top: 1px;
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  .hpBar {
+    height: 5px;
+    margin: 4px 0;
+  }
+
+  .stats {
+    gap: 2px;
+  }
+
+  .stats span {
+    min-height: 17px;
+    padding: 2px 1px;
+    border-radius: 5px;
+    font-size: 8px;
+  }
+
+  .skillBoard {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2px;
+    margin-top: 4px;
+  }
+
+  .skillSlot {
+    min-height: 19px;
+    padding: 2px 1px;
+    border-radius: 5px;
+    font-size: 7px;
+    line-height: 1;
+  }
+
+  .modalLayer {
+    padding: 6px;
+  }
+
+  .modal {
+    width: min(680px, 100%);
+    max-height: calc(100dvh - 12px);
+    padding: 10px;
+  }
+
+  .logModalList {
+    max-height: calc(100dvh - 94px);
+  }
+}
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .app {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .topbar {
+    display: grid;
+  }
+
+  .statusStrip {
+    justify-content: start;
+  }
+
+  .layout {
+    grid-template-rows: auto auto;
+  }
+
+  .tile {
+    min-height: clamp(46px, 7vh, 58px);
+  }
+
+  .runControls {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) and (max-width: 980px) {
+  .app {
+    grid-template-rows: 28px minmax(0, 1fr) 86px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 170px;
+  }
+
+  .boardPanel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .boardGrid {
+    flex: 1 1 auto;
+  }
+
+  .tile {
+    min-height: 0;
+  }
+
+  .sidePanel {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .itemList {
+    display: grid;
+  }
+
+  .units {
+    height: 100%;
   }
 }
 

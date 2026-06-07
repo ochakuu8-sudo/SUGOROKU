@@ -700,6 +700,7 @@ export function App() {
   const [rewardPulse, setRewardPulse] = useState<number | null>(null);
   const [inventoryPulse, setInventoryPulse] = useState(false);
   const [coinPulse, setCoinPulse] = useState(false);
+  const [showLog, setShowLog] = useState(false);
 
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
   const locked = phase === "animating" || phase === "battle";
@@ -1255,6 +1256,7 @@ export function App() {
     setRewardPulse(null);
     setInventoryPulse(false);
     setCoinPulse(false);
+    setShowLog(false);
     setLog(["ラン開始。まずは勇者1体で盤面を育てる。"]);
   }
 
@@ -1337,6 +1339,10 @@ export function App() {
           <div className="runControls">
             <span>直近出目: {lastRoll ?? "-"}</span>
             <span>次の戦闘まで: {5 - (turn % 5)}ターン</span>
+            <button onClick={() => setShowLog(true)} className="ghostButton" disabled={locked}>
+              <ScrollText size={16} />
+              ログ
+            </button>
             <button onClick={resetGame} className="ghostButton" disabled={locked}>
               <RefreshCw size={16} />
               リセット
@@ -1359,14 +1365,6 @@ export function App() {
             ))}
             {renderFloating("inventory", "inventory")}
           </div>
-          <h2>ログ</h2>
-          <ol className="logList">
-            {log.map((entry, index) => (
-              <li key={`${entry}-${index}`} className={index === 0 ? "newLog" : ""}>
-                {entry}
-              </li>
-            ))}
-          </ol>
         </aside>
       </section>
 
@@ -1410,7 +1408,8 @@ export function App() {
         ))}
       </section>
 
-      {(phase === "chooseTraining" ||
+      {(showLog ||
+        phase === "chooseTraining" ||
         phase === "chooseTile" ||
         phase === "battle" ||
         phase === "reward" ||
@@ -1421,7 +1420,25 @@ export function App() {
         phase === "clear") && (
         <section className="modalLayer">
           <div className={`modal ${phase === "battle" ? "battleModal" : ""}`}>
-            {phase === "chooseTraining" && pendingTraining && (
+            {showLog && (
+              <>
+                <div className="modalHeader">
+                  <h2>ログ</h2>
+                  <button className="ghostButton" onClick={() => setShowLog(false)}>
+                    閉じる
+                  </button>
+                </div>
+                <ol className="logList logModalList">
+                  {log.map((entry, index) => (
+                    <li key={`${entry}-${index}`} className={index === 0 ? "newLog" : ""}>
+                      {entry}
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
+
+            {!showLog && phase === "chooseTraining" && pendingTraining && (
               <>
                 <h2>{statLabels[pendingTraining.stat]}訓練</h2>
                 <p>強化するユニットを選択。</p>
@@ -1438,7 +1455,7 @@ export function App() {
               </>
             )}
 
-            {phase === "chooseTile" && pendingTileIndex !== null && (
+            {!showLog && phase === "chooseTile" && pendingTileIndex !== null && (
               <>
                 <h2>マス効果選択</h2>
                 <p>{pendingTileIndex + 1}マス目に置く効果を選択。選んだ効果は今すぐ1回発動します。</p>
@@ -1458,7 +1475,7 @@ export function App() {
               </>
             )}
 
-            {phase === "battle" && battleView && (
+            {!showLog && phase === "battle" && battleView && (
               <>
                 <h2>オートバトル</h2>
                 <div className={`battleStage ${battleView.tone}`}>
@@ -1527,7 +1544,7 @@ export function App() {
               </>
             )}
 
-            {phase === "reward" && (
+            {!showLog && phase === "reward" && (
               <>
                 <h2>戦闘報酬</h2>
                 <p>候補から1つ選択。</p>
@@ -1558,7 +1575,7 @@ export function App() {
               </>
             )}
 
-            {phase === "recruit" && (
+            {!showLog && phase === "recruit" && (
               <>
                 <h2>仲間加入</h2>
                 <p>候補から1体を選択。</p>
@@ -1576,7 +1593,7 @@ export function App() {
               </>
             )}
 
-            {phase === "shop" && (
+            {!showLog && phase === "shop" && (
               <>
                 <h2>SHOP</h2>
                 <p>12コインでマスを購入。</p>
@@ -1595,7 +1612,7 @@ export function App() {
               </>
             )}
 
-            {phase === "prep" && (
+            {!showLog && phase === "prep" && (
               <>
                 <h2>準備フェーズ</h2>
                 <p>所持マスやスキルを選び、盤面やスキルボードへ設置。</p>
@@ -1711,7 +1728,7 @@ export function App() {
               </>
             )}
 
-            {(phase === "gameover" || phase === "clear") && (
+            {!showLog && (phase === "gameover" || phase === "clear") && (
               <>
                 <h2>{phase === "clear" ? "ラン勝利" : "ラン終了"}</h2>
                 <p>{phase === "clear" ? "10戦を突破した。" : "戦闘に敗北した。"}</p>
