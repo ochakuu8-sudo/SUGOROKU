@@ -552,6 +552,7 @@ export function App() {
   const [activeSkill, setActiveSkill] = useState<{ unitId: string; slotIndex: number } | null>(null);
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
   const [battleView, setBattleView] = useState<BattleView | null>(null);
+  const [battleUnits, setBattleUnits] = useState<Unit[]>([]);
   const [rewardPulse, setRewardPulse] = useState<number | null>(null);
   const [inventoryPulse, setInventoryPulse] = useState(false);
   const [coinPulse, setCoinPulse] = useState(false);
@@ -777,6 +778,7 @@ export function App() {
     const usedBattleItems = battleItems;
     setBattleItems([]);
     const result = runBattle(currentUnits, nextBattle, usedBattleItems);
+    setBattleUnits(currentUnits.map((unit) => ({ ...unit })));
 
     setBattleView({
       enemyName: result.enemyName,
@@ -793,7 +795,11 @@ export function App() {
         setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
         if (event.text.includes("14")) {
           enemyHp = Math.max(0, enemyHp - 14);
+          setBattleView((current) => current && { ...current, enemyHp });
           addFloatingText("enemy", "enemy", "-14", "bad");
+        }
+        if (event.text.includes("回復")) {
+          setBattleUnits((current) => current.map((unit) => ({ ...unit, hp: Math.min(maxHp(unit), unit.hp + 8) })));
         }
         await wait(260);
         continue;
@@ -801,23 +807,34 @@ export function App() {
 
       if (event.type === "unit") {
         setActiveSkill({ unitId: event.unitId, slotIndex: event.slotIndex });
+        setBattleUnits((current) =>
+          current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.slotIndex } : unit)),
+        );
         setBattleView((current) =>
           current && {
             ...current,
-            enemyHp: event.target === "enemy" && event.value ? Math.max(0, enemyHp - event.value) : current.enemyHp,
+            enemyHp: current.enemyHp,
             message: event.text,
             activeUnitId: event.unitId,
             activeSlot: event.slotIndex,
             tone: event.tone,
           },
         );
+        await wait(220);
         if (event.target === "enemy" && event.value) {
           enemyHp = Math.max(0, enemyHp - event.value);
+          setBattleView((current) => current && { ...current, enemyHp });
           addFloatingText("enemy", "enemy", `-${event.value}`, "bad");
         } else if (event.targetUnitId && event.value) {
+          setBattleUnits((current) =>
+            current.map((unit) =>
+              unit.id === event.targetUnitId ? { ...unit, hp: Math.min(maxHp(unit), unit.hp + event.value!) } : unit,
+            ),
+          );
           addFloatingText("unit", event.targetUnitId, `+${event.value}`, "good");
           void flashUnit(event.targetUnitId, "good");
         } else if (event.target === "party" && event.value) {
+          setBattleUnits((current) => current.map((unit) => ({ ...unit, hp: Math.min(maxHp(unit), unit.hp + event.value!) })));
           currentUnits.forEach((unit) => addFloatingText("unit", unit.id, `+${event.value}`, "good"));
         } else if (event.target === "self" && event.value) {
           addFloatingText("unit", event.unitId, `+${event.value}`, "good");
@@ -825,12 +842,18 @@ export function App() {
         setUnits((current) =>
           current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.nextIndex } : unit)),
         );
-        await wait(260);
+        await wait(360);
+        setBattleUnits((current) =>
+          current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.nextIndex } : unit)),
+        );
         setActiveSkill(null);
         continue;
       }
 
       setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
+      setBattleUnits((current) =>
+        current.map((unit) => (unit.id === event.targetUnitId ? { ...unit, hp: Math.max(0, unit.hp - event.value) } : unit)),
+      );
       addFloatingText("unit", event.targetUnitId, `-${event.value}`, "bad");
       void flashUnit(event.targetUnitId, "bad");
       await wait(260);
@@ -850,6 +873,7 @@ export function App() {
 
     if (!result.win) {
       setBattleView(null);
+      setBattleUnits([]);
       setBanner(null);
       setPhase("gameover");
       return;
@@ -861,6 +885,7 @@ export function App() {
 
     if (nextBattle >= 10) {
       setBattleView(null);
+      setBattleUnits([]);
       setBanner(null);
       setPhase("clear");
       return;
@@ -870,6 +895,7 @@ export function App() {
       const candidates = recruitPool.filter((unit) => !currentUnits.some((owned) => owned.id === unit.id)).slice(0, 3);
       setRecruits(candidates);
       setBattleView(null);
+      setBattleUnits([]);
       setBanner(null);
       setPhase("recruit");
       return;
@@ -877,6 +903,7 @@ export function App() {
 
     setRewards(uniqueRewards(3));
     setBattleView(null);
+    setBattleUnits([]);
     setBanner(null);
     setPhase("reward");
   }
@@ -1020,6 +1047,7 @@ export function App() {
     setActiveSkill(null);
     setFloatingTexts([]);
     setBattleView(null);
+    setBattleUnits([]);
     setRewardPulse(null);
     setInventoryPulse(false);
     setCoinPulse(false);
@@ -1215,6 +1243,40 @@ export function App() {
                       <i style={{ width: `${Math.max(0, Math.min(100, (battleView.enemyHp / battleView.enemyMaxHp) * 100))}%` }} />
                     </div>
                     {renderFloating("enemy", "enemy")}
+                  </div>
+                  <div className="battleUnits">
+                    {battleUnits.map((unit) => (
+                      <article key={unit.id} className={`battleUnitCard ${battleView.activeUnitId === unit.id ? "acting" : ""}`}>
+                        <div className="battleUnitHeader">
+                          <strong>{unit.name}</strong>
+                          <span>
+                            {unit.hp}/{maxHp(unit)}
+                          </span>
+                        </div>
+                        <div className="hpBar">
+                          <i style={{ width: `${Math.max(0, Math.min(100, (unit.hp / maxHp(unit)) * 100))}%` }} />
+                        </div>
+                        <div className="battleSkillBoard">
+                          {unit.skillBoard.map((skill, index) => (
+                            <span
+                              key={`${unit.id}-battle-${skill.id}-${index}`}
+                              className={[
+                                "battleSkillSlot",
+                                unit.boardIndex === index ? "cursor" : "",
+                                activeSkill?.unitId === unit.id && activeSkill.slotIndex === index ? "firing" : "",
+                              ].join(" ")}
+                            >
+                              <small>{index + 1}</small>
+                              {skill.name}
+                              {(unit.boardIndex === index || (activeSkill?.unitId === unit.id && activeSkill.slotIndex === index)) && (
+                                <i className={`skillPiece ${activeSkill?.unitId === unit.id && activeSkill.slotIndex === index ? "strike" : ""}`} />
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                        {renderFloating("unit", unit.id)}
+                      </article>
+                    ))}
                   </div>
                   <p>{battleView.message}</p>
                 </div>

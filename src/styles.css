@@ -589,7 +589,7 @@ h3 {
 }
 
 .battleModal {
-  width: min(640px, 100%);
+  width: min(860px, 100%);
 }
 
 .battleStage {
@@ -632,6 +632,102 @@ h3 {
 
 .battleStage.good .enemyCard {
   animation: unit-good 0.3s ease;
+}
+
+.battleUnits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.battleUnitCard {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  min-height: 136px;
+  padding: 10px;
+  border: 1px solid #d7cfbd;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.battleUnitCard.acting {
+  border-color: #1f575d;
+  animation: battle-unit-acting 0.42s ease;
+}
+
+.battleUnitHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.battleUnitHeader span {
+  font-weight: 800;
+}
+
+.battleSkillBoard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.battleSkillSlot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 4px 3px;
+  border: 1px solid #d7cfbd;
+  border-radius: 7px;
+  background: #f8f6ee;
+  color: #273137;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  overflow: hidden;
+}
+
+.battleSkillSlot small {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  color: #879194;
+  font-size: 9px;
+}
+
+.battleSkillSlot.cursor {
+  border-color: #d23f31;
+  background: #fff1ee;
+}
+
+.battleSkillSlot.firing {
+  border-color: #1f575d;
+  background: #e4f1ed;
+  animation: skill-fire 0.42s ease;
+}
+
+.skillPiece {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, #ffffff 0 13%, transparent 14%),
+    linear-gradient(145deg, #e84f3f, #9c241d);
+  box-shadow: 0 4px 8px rgba(142, 45, 45, 0.24);
+  animation: skill-piece-step 0.26s cubic-bezier(0.16, 1.35, 0.42, 1);
+}
+
+.skillPiece.strike {
+  animation: skill-piece-strike 0.38s ease;
 }
 
 .floatText {
@@ -1216,6 +1312,63 @@ h3 {
     padding: 10px;
   }
 
+  .battleModal {
+    width: min(820px, 100%);
+  }
+
+  .battleStage {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .enemyCard {
+    gap: 4px;
+    padding: 7px;
+  }
+
+  .enemyCard strong {
+    font-size: 13px;
+  }
+
+  .battleUnits {
+    gap: 6px;
+  }
+
+  .battleUnitCard {
+    gap: 5px;
+    min-height: 88px;
+    padding: 6px;
+  }
+
+  .battleUnitHeader {
+    font-size: 10px;
+  }
+
+  .battleSkillBoard {
+    gap: 3px;
+  }
+
+  .battleSkillSlot {
+    min-height: 27px;
+    padding: 3px 2px;
+    border-radius: 5px;
+    font-size: 8px;
+  }
+
+  .battleSkillSlot small {
+    top: 2px;
+    left: 3px;
+    font-size: 7px;
+  }
+
+  .skillPiece {
+    right: 3px;
+    bottom: 3px;
+    width: 9px;
+    height: 9px;
+    border-width: 1px;
+  }
+
   .bannerPulse {
     min-width: 128px;
     padding: 8px 12px;
@@ -1477,6 +1630,45 @@ h3 {
   }
   45% {
     transform: scale(1.07);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes skill-piece-step {
+  0% {
+    transform: translateY(-9px) scale(0.96);
+  }
+  55% {
+    transform: translateY(0) scale(1.15, 0.86);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes skill-piece-strike {
+  0% {
+    transform: translateX(0) scale(1);
+  }
+  35% {
+    transform: translateX(8px) scale(1.16);
+  }
+  65% {
+    transform: translateX(-2px) scale(0.96);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes battle-unit-acting {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.025);
   }
   100% {
     transform: scale(1);
