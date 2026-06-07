@@ -283,9 +283,9 @@ let idCounter = 0;
 const battleTiming = {
   start: 900,
   item: 900,
-  stepToSkill: 700,
-  skillActivate: 520,
-  hpChange: 900,
+  stepToSkill: 360,
+  skillActivate: 460,
+  hpChange: 650,
   enemyIntent: 620,
   enemyHit: 850,
   finish: 1000,
@@ -956,7 +956,7 @@ export function App() {
       }
 
       if (event.type === "unit") {
-        setActiveSkill({ unitId: event.unitId, slotIndex: event.slotIndex });
+        setActiveSkill(null);
         setBattleUnits((current) =>
           current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.slotIndex } : unit)),
         );
@@ -964,13 +964,13 @@ export function App() {
           current && {
             ...current,
             enemyHp: current.enemyHp,
-            message: `${event.unitName}が「${event.skillName}」のマスへ進む`,
             activeUnitId: event.unitId,
             activeSlot: event.slotIndex,
             tone: "neutral",
           },
         );
         await wait(battleTiming.stepToSkill);
+        setActiveSkill({ unitId: event.unitId, slotIndex: event.slotIndex });
         setBattleView((current) =>
           current && {
             ...current,
@@ -1009,12 +1009,11 @@ export function App() {
         continue;
       }
 
-      setActiveEnemySkill(event.slotIndex);
+      setActiveEnemySkill(null);
       setBattleView(
         (current) =>
           current && {
             ...current,
-            message: `${event.enemyName}が「${event.skillName}」のマスへ進む`,
             activeUnitId: undefined,
             activeSlot: undefined,
             enemyBoardIndex: event.slotIndex,
@@ -1022,6 +1021,7 @@ export function App() {
           },
       );
       await wait(battleTiming.stepToSkill);
+      setActiveEnemySkill(event.slotIndex);
       setBattleView((current) => current && { ...current, message: `${event.skillName} 発動`, tone: event.tone });
       await wait(battleTiming.skillActivate);
 
