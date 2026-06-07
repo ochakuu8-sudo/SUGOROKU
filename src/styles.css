@@ -1958,7 +1958,8 @@ h3 {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     gap: 6px;
-    height: 100dvh;
+    height: 100svh;
+    max-height: 100svh;
     min-height: 0;
     overflow: hidden;
     padding: 7px;
@@ -2316,30 +2317,88 @@ h3 {
 
 @media (orientation: landscape) and (max-height: 560px) and (max-width: 980px) {
   .app {
-    grid-template-rows: 28px minmax(0, 1fr) 86px;
+    grid-template-columns: minmax(0, 1fr) clamp(196px, 27vw, 240px);
+    grid-template-rows: 24px minmax(0, 1fr);
+    gap: 5px;
+    height: 100svh;
+    max-height: 100svh;
+    padding: 5px;
+  }
+
+  .topbar {
+    grid-column: 1 / -1;
+    min-height: 0;
+  }
+
+  h1 {
+    font-size: 15px;
   }
 
   .layout {
-    grid-template-columns: minmax(0, 1fr) 170px;
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr) clamp(124px, 19vw, 160px);
+    gap: 5px;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .boardPanel {
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    padding: 5px;
+  }
+
+  .boardHeader {
+    flex: 0 0 26px;
+  }
+
+  .boardHeader h2 {
+    font-size: 12px;
   }
 
   .boardGrid {
     flex: 1 1 auto;
+    gap: 4px;
+    margin-top: 4px;
   }
 
   .tile {
     min-height: 0;
+    padding: 3px;
+  }
+
+  .tileIcon svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .tile strong {
+    font-size: 10px;
+    line-height: 1.05;
+  }
+
+  .tile small,
+  .tileIndex {
+    font-size: 8px;
+  }
+
+  .runControls {
+    flex: 0 0 24px;
+    margin-top: 4px;
+    font-size: 10px;
+  }
+
+  .runControls .ghostButton {
+    min-height: 22px;
+    padding: 2px 6px;
   }
 
   .sidePanel {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr);
     align-items: start;
+    padding: 5px;
   }
 
   .itemList {
@@ -2347,7 +2406,53 @@ h3 {
   }
 
   .units {
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    align-self: stretch;
+    gap: 5px;
     height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .unitInfoPanel,
+  .unitInfoPanel.battleInfo {
+    grid-template-rows: 14px 5px 16px minmax(0, 1fr);
+    gap: 3px;
+    height: 100%;
+    min-height: 0;
+    padding: 5px;
+  }
+
+  .unitInfoHead h3 {
+    font-size: 10px;
+  }
+
+  .unitInfoHead span {
+    font-size: 8px;
+  }
+
+  .unitInfoStats span {
+    min-height: 16px;
+    font-size: 8px;
+  }
+
+  .unitInfoSkillBoard {
+    gap: 3px;
+    min-height: 0;
+  }
+
+  .unitInfoSkill {
+    grid-template-rows: 8px minmax(0, 1fr);
+    min-height: 0;
+    padding: 2px;
+    font-size: 8px;
+  }
+
+  .unitInfoSkill small {
+    font-size: 7px;
   }
 }
 
