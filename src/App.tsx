@@ -1,7 +1,6 @@
 import {
   Box,
   Coins,
-  Dices,
   Heart,
   Hotel,
   PackagePlus,
@@ -1067,7 +1066,9 @@ export function App() {
           <div className="boardHeader">
             <h2>共通盤面</h2>
             <button className={`primaryButton diceButton ${diceRolling ? "rolling" : ""}`} onClick={() => void rollDice()} disabled={phase !== "explore" || locked}>
-              <Dices size={18} />
+              <span className="dieCube" aria-hidden="true">
+                {diceRolling ? "?" : fixedRoll ?? lastRoll ?? "D3"}
+              </span>
               {diceRolling ? "..." : fixedRoll ? `${fixedRoll}進む` : "1D3を振る"}
             </button>
           </div>
@@ -1093,6 +1094,9 @@ export function App() {
                 <span className="tileIcon">{tileIcon(tile.type)}</span>
                 <strong>{tile.name}</strong>
                 <small>Lv{tile.level}</small>
+                {position === index && (
+                  <span className={`boardPiece ${movingTrail.includes(index) ? "hopping" : ""} ${arrivalIndex === index ? "landed" : ""}`} aria-label="現在地" />
+                )}
                 {renderFloating("tile", String(index))}
               </button>
             ))}

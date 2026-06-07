@@ -175,16 +175,31 @@ h3 {
   background: #1f575d;
 }
 
-.diceButton svg {
+.diceButton.rolling {
+  animation: button-shake 0.38s ease infinite;
+}
+
+.dieCube {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 7px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(219, 239, 236, 0.92));
+  color: #1f575d;
+  box-shadow:
+    inset -2px -2px 0 rgba(31, 87, 93, 0.12),
+    0 4px 10px rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
   transform-origin: center;
 }
 
-.diceButton.rolling svg {
-  animation: dice-spin 0.42s linear infinite;
-}
-
-.diceButton.rolling {
-  animation: button-shake 0.38s ease infinite;
+.diceButton.rolling .dieCube {
+  animation: dice-tumble 0.48s linear infinite;
 }
 
 .ghostButton {
@@ -220,6 +235,46 @@ h3 {
   color: #223039;
   background: #fcfbf6;
   overflow: hidden;
+}
+
+.boardPiece {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 4;
+  width: 24px;
+  height: 24px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, #ffffff 0 12%, transparent 13%),
+    linear-gradient(145deg, #e84f3f, #9c241d);
+  box-shadow:
+    0 8px 14px rgba(142, 45, 45, 0.28),
+    inset -3px -4px 0 rgba(68, 19, 15, 0.18);
+  pointer-events: none;
+  animation: piece-idle 1.3s ease-in-out infinite;
+}
+
+.boardPiece::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 18px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(41, 36, 29, 0.22);
+  transform: translateX(-50%);
+  filter: blur(1px);
+}
+
+.boardPiece.hopping {
+  animation: piece-hop 0.22s cubic-bezier(0.16, 1.35, 0.42, 1);
+}
+
+.boardPiece.landed {
+  animation: piece-land 0.46s cubic-bezier(0.2, 1.45, 0.4, 1);
 }
 
 .tile::after {
@@ -981,6 +1036,13 @@ h3 {
     padding: 3px 8px;
   }
 
+  .dieCube {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    font-size: 10px;
+  }
+
   .boardGrid {
     flex: 1 1 auto;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -994,6 +1056,14 @@ h3 {
     grid-template-rows: 12px 15px 1fr 12px;
     min-height: 0;
     padding: 3px;
+  }
+
+  .boardPiece {
+    right: 5px;
+    bottom: 5px;
+    width: 17px;
+    height: 17px;
+    border-width: 2px;
   }
 
   .tileIcon svg {
@@ -1211,6 +1281,58 @@ h3 {
 @keyframes dice-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes dice-tumble {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(90deg) scale(1.08);
+  }
+  50% {
+    transform: rotate(180deg) scale(0.96);
+  }
+  75% {
+    transform: rotate(270deg) scale(1.08);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes piece-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes piece-hop {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-14px) scale(1.06);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes piece-land {
+  0% {
+    transform: translateY(-12px) scale(1.08);
+  }
+  58% {
+    transform: translateY(0) scale(1.16, 0.86);
+  }
+  100% {
+    transform: translateY(0) scale(1);
   }
 }
 
