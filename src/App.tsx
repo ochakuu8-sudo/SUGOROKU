@@ -231,6 +231,17 @@ const initialHero: Unit = {
 
 let idCounter = 0;
 
+const battleTiming = {
+  start: 900,
+  item: 900,
+  stepToSkill: 700,
+  skillActivate: 520,
+  hpChange: 900,
+  enemyIntent: 620,
+  enemyHit: 850,
+  finish: 1000,
+};
+
 function createId(prefix: string) {
   idCounter += 1;
   return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}-${Math.random()
@@ -787,12 +798,13 @@ export function App() {
       message: `${result.enemyName}が現れた`,
       tone: "neutral",
     });
-    await wait(520);
+    await wait(battleTiming.start);
 
     let enemyHp = result.enemyMaxHp;
     for (const event of result.events) {
       if (event.type === "item") {
         setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
+        await wait(battleTiming.skillActivate);
         if (event.text.includes("14")) {
           enemyHp = Math.max(0, enemyHp - 14);
           setBattleView((current) => current && { ...current, enemyHp });
@@ -801,7 +813,7 @@ export function App() {
         if (event.text.includes("回復")) {
           setBattleUnits((current) => current.map((unit) => ({ ...unit, hp: Math.min(maxHp(unit), unit.hp + 8) })));
         }
-        await wait(260);
+        await wait(battleTiming.item);
         continue;
       }
 
@@ -814,13 +826,21 @@ export function App() {
           current && {
             ...current,
             enemyHp: current.enemyHp,
-            message: event.text,
+            message: `${event.unitName}が「${event.skillName}」のマスへ進む`,
             activeUnitId: event.unitId,
             activeSlot: event.slotIndex,
+            tone: "neutral",
+          },
+        );
+        await wait(battleTiming.stepToSkill);
+        setBattleView((current) =>
+          current && {
+            ...current,
+            message: `${event.skillName} 発動`,
             tone: event.tone,
           },
         );
-        await wait(220);
+        await wait(battleTiming.skillActivate);
         if (event.target === "enemy" && event.value) {
           enemyHp = Math.max(0, enemyHp - event.value);
           setBattleView((current) => current && { ...current, enemyHp });
@@ -842,7 +862,8 @@ export function App() {
         setUnits((current) =>
           current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.nextIndex } : unit)),
         );
-        await wait(360);
+        setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
+        await wait(battleTiming.hpChange);
         setBattleUnits((current) =>
           current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.nextIndex } : unit)),
         );
@@ -850,13 +871,15 @@ export function App() {
         continue;
       }
 
+      setBattleView((current) => current && { ...current, message: "敵が攻撃態勢に入る", tone: "neutral" });
+      await wait(battleTiming.enemyIntent);
       setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
       setBattleUnits((current) =>
         current.map((unit) => (unit.id === event.targetUnitId ? { ...unit, hp: Math.max(0, unit.hp - event.value) } : unit)),
       );
       addFloatingText("unit", event.targetUnitId, `-${event.value}`, "bad");
       void flashUnit(event.targetUnitId, "bad");
-      await wait(260);
+      await wait(battleTiming.enemyHit);
     }
 
     setLog((current) => [...result.logs.reverse(), ...current].slice(0, 12));
@@ -869,7 +892,7 @@ export function App() {
         tone: result.win ? "good" : "bad",
       },
     );
-    await wait(720);
+    await wait(battleTiming.finish);
 
     if (!result.win) {
       setBattleView(null);
