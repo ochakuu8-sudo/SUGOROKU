@@ -466,11 +466,11 @@ h3 {
 .unitInfoPanel {
   position: relative;
   display: grid;
-  grid-template-rows: 36px 9px 30px 42px;
+  grid-template-rows: 18px 9px 28px 82px;
   gap: 7px;
   width: 100%;
   min-width: 0;
-  min-height: 132px;
+  min-height: 164px;
   padding: 10px;
   border: 1px solid #d7cfbd;
   border-radius: 8px;
@@ -481,7 +481,7 @@ h3 {
 }
 
 .unitInfoPanel.battleInfo {
-  grid-template-rows: 38px 9px 30px 42px;
+  grid-template-rows: 18px 9px 28px 82px;
 }
 
 .unitInfoPanel.selectable {
@@ -510,7 +510,7 @@ h3 {
 .unitInfoHead {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: 8px;
   min-width: 0;
   min-height: 0;
@@ -520,23 +520,16 @@ h3 {
 .unitInfoHead h3 {
   overflow: hidden;
   font-size: 14px;
-  line-height: 1;
+  line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .unitInfoHead p {
-  overflow: hidden;
-  margin-top: 3px;
-  color: #677376;
-  font-size: 11px;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: none;
 }
 
 .unitInfoHead span {
-  align-self: start;
   font-size: 12px;
   font-weight: 900;
   line-height: 1;
@@ -565,7 +558,8 @@ h3 {
 
 .unitInfoSkillBoard {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 4px;
   min-width: 0;
 }
@@ -573,16 +567,16 @@ h3 {
 .unitInfoSkill {
   position: relative;
   display: grid;
-  grid-template-rows: 10px 1fr;
+  grid-template-rows: 11px 1fr;
   place-items: center;
   min-width: 0;
-  min-height: 40px;
-  padding: 2px;
+  min-height: 39px;
+  padding: 3px;
   border: 1px solid #c9c2b1;
   border-radius: 6px;
   background: #ffffff;
   color: #273137;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 900;
   line-height: 1;
   text-align: center;
@@ -2165,16 +2159,16 @@ h3 {
   }
 
   .unitInfoPanel {
-    grid-template-rows: 26px 5px 17px 22px;
+    grid-template-rows: 15px 5px 17px 46px;
     gap: 4px;
-    min-height: 84px;
+    min-height: 98px;
     padding: 5px;
     border-radius: 6px;
   }
 
   .unitInfoPanel.battleInfo {
-    grid-template-rows: 29px 5px 17px 22px;
-    min-height: 87px;
+    grid-template-rows: 15px 5px 17px 46px;
+    min-height: 98px;
   }
 
   .unitInfoHead {
@@ -2186,9 +2180,7 @@ h3 {
     font-size: 11px;
   }
 
-  .unitInfoHead p,
   .unitInfoHead span {
-    margin-top: 1px;
     font-size: 9px;
   }
 
@@ -2204,15 +2196,17 @@ h3 {
   }
 
   .unitInfoSkillBoard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
     gap: 2px;
   }
 
   .unitInfoSkill {
-    grid-template-rows: 7px 1fr;
+    grid-template-rows: 8px 1fr;
     min-height: 22px;
-    padding: 1px;
+    padding: 1px 2px;
     border-radius: 5px;
-    font-size: 7px;
+    font-size: 8px;
   }
 
   .unitInfoSkill small {

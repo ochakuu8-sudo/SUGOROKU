@@ -1295,10 +1295,7 @@ export function App() {
         ].join(" ")}
       >
         <div className="unitInfoHead">
-          <div>
-            <h3>{unit.name}</h3>
-            <p>{unit.job}</p>
-          </div>
+          <h3>{unit.job}</h3>
           {showHp && <span>{unit.hp}/{maxHp(unit)}</span>}
         </div>
         {showHp && (
