@@ -673,6 +673,7 @@ export function App() {
   const [tileInventory, setTileInventory] = useState<Tile[]>([]);
   const [skillInventory, setSkillInventory] = useState<Skill[]>([]);
   const [phase, setPhase] = useState<Phase>("explore");
+  const [prepEndsTurn, setPrepEndsTurn] = useState(false);
   const [lastRoll, setLastRoll] = useState<number | null>(null);
   const [fixedRoll, setFixedRoll] = useState<number | null>(null);
   const [pendingTraining, setPendingTraining] = useState<{ stat: StatKey; amount: number } | null>(null);
@@ -870,7 +871,9 @@ export function App() {
       setSkillInventory((current) => [...current, skill].slice(0, 6));
       pushLog(`スキル「${skill.name}」を入手。`);
       await flashInventory(skill.name);
-      await finishTurn();
+      setPrepEndsTurn(true);
+      setBanner(null);
+      setPhase("prep");
       return;
     }
 
@@ -1132,6 +1135,7 @@ export function App() {
     }
     setRewardPulse(null);
     setRewards([]);
+    setPrepEndsTurn(false);
     setPhase("prep");
   }
 
@@ -1140,6 +1144,7 @@ export function App() {
     const newUnit: Unit = { ...candidate, hp: candidate.stats.vitality * 5, boardIndex: 0 };
     setUnits((current) => [...current, newUnit]);
     pushLog(`${candidate.name}が仲間になった。`);
+    setPrepEndsTurn(false);
     setPhase("prep");
     await wait(80);
     await flashUnit(candidate.id, "good", "加入");
@@ -1162,6 +1167,19 @@ export function App() {
     setShopOffers([]);
     setPhase("animating");
     await finishTurn();
+  }
+
+  async function leavePrep() {
+    if (locked) return;
+    setSelectedTileIndex(null);
+    setSelectedSkillIndex(null);
+    if (prepEndsTurn) {
+      setPrepEndsTurn(false);
+      setPhase("animating");
+      await finishTurn();
+      return;
+    }
+    setPhase("explore");
   }
 
   async function installTile(boardIndex: number) {
@@ -1235,6 +1253,7 @@ export function App() {
     setTileInventory([]);
     setSkillInventory([]);
     setPhase("explore");
+    setPrepEndsTurn(false);
     setLastRoll(null);
     setFixedRoll(null);
     setPendingTraining(null);
@@ -1717,6 +1736,7 @@ export function App() {
                   <div className="prepInstallPanel">
                     <h3>設置先を選択</h3>
                     <p>選択中: {tileInventory[selectedTileIndex].name}</p>
+                    <p className="prepSelectedEffect">{getTileDescription(tileInventory[selectedTileIndex])}</p>
                     <div className="prepBoardGrid">
                       {board.map((tile, index) => (
                         <button
@@ -1737,6 +1757,7 @@ export function App() {
                   <div className="prepInstallPanel">
                     <h3>装備先を選択</h3>
                     <p>選択中: {skillInventory[selectedSkillIndex].name}</p>
+                    <p className="prepSelectedEffect">{skillInventory[selectedSkillIndex].description}</p>
                     <div className="prepSkillTargets">
                       {units.map((unit) => (
                         <div key={`prep-skill-${unit.id}`}>
@@ -1767,9 +1788,9 @@ export function App() {
                     <Trash2 size={16} />
                     選択を破棄
                   </button>
-                  <button className="primaryButton" onClick={() => setPhase("explore")}>
+                  <button className="primaryButton" onClick={() => void leavePrep()}>
                     <Play size={18} />
-                    探索へ
+                    {prepEndsTurn ? "配置完了" : "探索へ"}
                   </button>
                 </div>
               </>

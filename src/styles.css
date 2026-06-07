@@ -1081,6 +1081,24 @@ h3 {
   font-size: 13px;
 }
 
+.prepSelectedEffect {
+  padding: 7px 8px;
+  border: 1px solid #d7cfbd;
+  border-radius: 7px;
+  background: #f8f6ee;
+  color: #3c464a;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.prepColumns .inventoryButton small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .prepBoardGrid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
