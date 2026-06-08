@@ -51,6 +51,7 @@ type SkillEffect =
   | "focus"
   | "slot"
   | "burning"
+  | "tackle"
   | "dash";
 
 type Tile = {
@@ -271,6 +272,12 @@ const skillPool: Skill[] = [
     name: "燃焼",
     effect: "burning",
     description: "止まったマスに燃焼3を配置。通過すると3ダメージ。",
+  },
+  {
+    id: "tackle",
+    name: "タックル",
+    effect: "tackle",
+    description: "このマスを通過した時、敵に2ダメージ。",
   },
   {
     id: "dash",
@@ -576,6 +583,25 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
     return { damage, focused };
   }
 
+  function triggerPassEffects(unit: BattleUnit, slotIndex: number) {
+    if (unit.burns[slotIndex] > 0) {
+      const burnDamage = 3;
+      unit.hp = Math.max(0, unit.hp - burnDamage);
+      unit.burns[slotIndex] -= 1;
+      if (unit.burns[slotIndex] <= 0) delete unit.burns[slotIndex];
+      effectEvent(`${unit.name}が燃焼マスを通過。${burnDamage}ダメージ。`, "bad", "unit", burnDamage, unit.id);
+      if (unit.hp <= 0) return true;
+    }
+
+    const passSkill = unit.skillBoard[slotIndex];
+    if (passSkill.effect === "tackle") {
+      const { damage, focused } = damageEnemy(unit, 2);
+      effectEvent(`${unit.name}が${passSkill.name}を通過。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+    }
+
+    return enemy.hp <= 0;
+  }
+
   function resolveUnitSkill(unit: BattleUnit, skill: Skill, slotIndex: number, roll: number) {
     switch (skill.effect) {
       case "guard": {
@@ -644,6 +670,10 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
       case "burning": {
         unit.burns[slotIndex] = (unit.burns[slotIndex] ?? 0) + 3;
         unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。このマスに燃焼3を配置。`, "bad", "none");
+        return;
+      }
+      case "tackle": {
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。このマスは通過時に敵へ2ダメージ。`, "neutral", "none");
         return;
       }
       case "dash": {
@@ -758,16 +788,9 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
       let slotIndex = unit.boardIndex;
       for (let step = 1; step <= battleRoll; step += 1) {
         slotIndex = (unit.boardIndex + step) % unit.skillBoard.length;
-        if (unit.burns[slotIndex] > 0) {
-          const burnDamage = 3;
-          unit.hp = Math.max(0, unit.hp - burnDamage);
-          unit.burns[slotIndex] -= 1;
-          if (unit.burns[slotIndex] <= 0) delete unit.burns[slotIndex];
-          effectEvent(`${unit.name}?????????${burnDamage}?????`, "bad", "unit", burnDamage, unit.id);
-          if (unit.hp <= 0) break;
-        }
+        if (triggerPassEffects(unit, slotIndex)) break;
       }
-      if (unit.hp <= 0) continue;
+      if (unit.hp <= 0 || enemy.hp <= 0) continue;
 
       const skill = unit.skillBoard[slotIndex];
       unit.boardIndex = slotIndex;
