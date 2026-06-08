@@ -108,6 +108,7 @@ type BattleEvent =
       unitId: string;
       unitName: string;
       skillName: string;
+      roll: number;
       slotIndex: number;
       nextIndex: number;
       text: string;
@@ -275,7 +276,7 @@ const initialHero: Unit = {
   stats: { vitality: 10, power: 5, agility: 5 },
   hp: 50,
   boardIndex: 0,
-  skillBoard: [normalAttack, normalAttack, normalAttack, normalAttack],
+  skillBoard: [normalAttack, normalAttack, normalAttack, normalAttack, normalAttack, normalAttack],
 };
 
 let idCounter = 0;
@@ -521,9 +522,10 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
       }
 
       const unit = actor.unit;
-      const slotIndex = unit.boardIndex % unit.skillBoard.length;
+      const battleRoll = Math.ceil(Math.random() * 3);
+      const slotIndex = (unit.boardIndex + battleRoll) % unit.skillBoard.length;
       const skill = unit.skillBoard[slotIndex];
-      unit.boardIndex = (unit.boardIndex + 1) % unit.skillBoard.length;
+      unit.boardIndex = slotIndex;
 
       if (skill.id === "guard") {
         unit.tempHp += unit.stats.vitality;
@@ -534,6 +536,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
           unitId: unit.id,
           unitName: unit.name,
           skillName: skill.name,
+          roll: battleRoll,
           slotIndex,
           nextIndex: unit.boardIndex,
           text,
@@ -551,6 +554,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
           unitId: unit.id,
           unitName: unit.name,
           skillName: skill.name,
+          roll: battleRoll,
           slotIndex,
           nextIndex: unit.boardIndex,
           text,
@@ -569,6 +573,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
           unitId: unit.id,
           unitName: unit.name,
           skillName: skill.name,
+          roll: battleRoll,
           slotIndex,
           nextIndex: unit.boardIndex,
           text,
@@ -587,6 +592,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
           unitId: unit.id,
           unitName: unit.name,
           skillName: skill.name,
+          roll: battleRoll,
           slotIndex,
           nextIndex: unit.boardIndex,
           text,
@@ -605,6 +611,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
           unitId: unit.id,
           unitName: unit.name,
           skillName: skill.name,
+          roll: battleRoll,
           slotIndex,
           nextIndex: unit.boardIndex,
           text,
@@ -622,6 +629,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
           unitId: unit.id,
           unitName: unit.name,
           skillName: skill.name,
+          roll: battleRoll,
           slotIndex,
           nextIndex: unit.boardIndex,
           text,
@@ -639,6 +647,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
           unitId: unit.id,
           unitName: unit.name,
           skillName: skill.name,
+          roll: battleRoll,
           slotIndex,
           nextIndex: unit.boardIndex,
           text,
@@ -980,7 +989,7 @@ export function App() {
         setBattleView((current) =>
           current && {
             ...current,
-            message: `${event.skillName} 発動`,
+            message: `出目${event.roll}: ${event.skillName} 発動`,
             tone: event.tone,
           },
         );
@@ -1082,16 +1091,6 @@ export function App() {
       setBattleUnits([]);
       setBanner(null);
       setPhase("clear");
-      return;
-    }
-
-    if (nextBattle % 3 === 0 && currentUnits.length < 3) {
-      const candidates = recruitPool.filter((unit) => !currentUnits.some((owned) => owned.id === unit.id)).slice(0, 3);
-      setRecruits(candidates);
-      setBattleView(null);
-      setBattleUnits([]);
-      setBanner(null);
-      setPhase("recruit");
       return;
     }
 
