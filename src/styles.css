@@ -448,6 +448,40 @@ h3 {
   overflow: auto;
 }
 
+.pauseActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.skillBookGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.skillBookCard {
+  display: grid;
+  gap: 6px;
+  min-height: 92px;
+  padding: 10px;
+  border: 1px solid #d7cfbd;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.skillBookCard strong {
+  font-size: 14px;
+}
+
+.skillBookCard span {
+  color: #4f5b5f;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .units {
   display: grid;
   grid-template-columns: minmax(280px, 560px);
@@ -2304,6 +2338,14 @@ h3 {
 
   .logModalList {
     max-height: calc(100dvh - 94px);
+  }
+
+  .pauseActions {
+    grid-template-columns: 1fr;
+  }
+
+  .skillBookGrid {
+    grid-template-columns: 1fr;
   }
 }
 

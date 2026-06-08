@@ -1,9 +1,11 @@
 import {
   Box,
+  BookOpen,
   Coins,
   Heart,
   Hotel,
   PackagePlus,
+  Pause,
   Play,
   Plus,
   RefreshCw,
@@ -20,6 +22,7 @@ import { useMemo, useState } from "react";
 type StatKey = "vitality" | "power" | "agility";
 type TileType = "empty" | "training" | "item" | "treasure" | "skill" | "shop" | "inn";
 type Scope = "single" | "all";
+type PauseView = "menu" | "skills";
 type Phase =
   | "explore"
   | "animating"
@@ -713,8 +716,10 @@ export function App() {
   const [coinPulse, setCoinPulse] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [skillPopup, setSkillPopup] = useState<Skill | null>(null);
+  const [pauseView, setPauseView] = useState<PauseView | null>(null);
 
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
+  const skillCatalog = useMemo(() => [normalAttack, ...skillPool], []);
   const locked = phase === "animating" || phase === "battle";
 
   function pushLog(message: string) {
@@ -1280,6 +1285,7 @@ export function App() {
     setCoinPulse(false);
     setShowLog(false);
     setSkillPopup(null);
+    setPauseView(null);
     setLog(["ラン開始。まずは勇者1体で盤面を育てる。"]);
   }
 
@@ -1428,6 +1434,10 @@ export function App() {
           <div className="runControls">
             <span>直近出目: {lastRoll ?? "-"}</span>
             <span>次の戦闘まで: {5 - (turn % 5)}ターン</span>
+            <button onClick={() => setPauseView("menu")} className="ghostButton" disabled={locked}>
+              <Pause size={16} />
+              一時停止
+            </button>
             <button onClick={() => setShowLog(true)} className="ghostButton" disabled={locked}>
               <ScrollText size={16} />
               ログ
@@ -1501,7 +1511,8 @@ export function App() {
         </div>
       )}
 
-      {(showLog ||
+      {(pauseView ||
+        showLog ||
         phase === "chooseTraining" ||
         phase === "chooseTile" ||
         phase === "battle" ||
@@ -1513,7 +1524,47 @@ export function App() {
         phase === "clear") && (
         <section className="modalLayer">
           <div className={`modal ${phase === "battle" ? "battleModal" : ""}`}>
-            {showLog && (
+            {pauseView === "menu" && (
+              <>
+                <div className="modalHeader">
+                  <h2>一時停止</h2>
+                  <button className="ghostButton" onClick={() => setPauseView(null)}>
+                    閉じる
+                  </button>
+                </div>
+                <div className="pauseActions">
+                  <button className="primaryButton" onClick={() => setPauseView(null)}>
+                    <Play size={18} />
+                    再開
+                  </button>
+                  <button className="ghostButton" onClick={() => setPauseView("skills")}>
+                    <BookOpen size={18} />
+                    スキル図鑑
+                  </button>
+                </div>
+              </>
+            )}
+
+            {pauseView === "skills" && (
+              <>
+                <div className="modalHeader">
+                  <h2>スキル図鑑</h2>
+                  <button className="ghostButton" onClick={() => setPauseView("menu")}>
+                    戻る
+                  </button>
+                </div>
+                <div className="skillBookGrid">
+                  {skillCatalog.map((skill) => (
+                    <article key={`book-${skill.id}`} className="skillBookCard">
+                      <strong>{skill.name}</strong>
+                      <span>{skill.description}</span>
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {!pauseView && showLog && (
               <>
                 <div className="modalHeader">
                   <h2>ログ</h2>
