@@ -38,6 +38,20 @@ type Phase =
 type Tone = "good" | "bad" | "neutral" | "rare";
 
 type Stats = Record<StatKey, number>;
+type SkillEffect =
+  | "attack"
+  | "heavySlash"
+  | "guard"
+  | "quickStab"
+  | "heal"
+  | "firebolt"
+  | "rally"
+  | "spiritSlash"
+  | "poison"
+  | "focus"
+  | "slot"
+  | "burning"
+  | "dash";
 
 type Tile = {
   id: string;
@@ -59,14 +73,27 @@ type Unit = {
   boardIndex: number;
 };
 
+type BattleUnit = Unit & {
+  tempHp: number;
+  focus: number;
+  swiftTurns: number;
+  swiftBonus: number;
+  charges: Record<string, number>;
+  burns: Record<number, number>;
+};
+
 type Skill = {
   id: string;
   name: string;
   description: string;
+  effect: SkillEffect;
   cost?: number;
 };
 
-type EnemySkill = Skill & {
+type EnemySkill = {
+  id: string;
+  name: string;
+  description: string;
   effect: "strike" | "heavy" | "cleave" | "recover";
 };
 
@@ -116,7 +143,15 @@ type BattleEvent =
       nextIndex: number;
       text: string;
       tone: Tone;
-      target: "enemy" | "ally" | "self" | "party";
+      target: "enemy" | "ally" | "self" | "party" | "coins" | "none";
+      targetUnitId?: string;
+      value?: number;
+    }
+  | {
+      type: "effect";
+      text: string;
+      tone: Tone;
+      target: "enemy" | "unit" | "coins";
       targetUnitId?: string;
       value?: number;
     }
@@ -140,6 +175,7 @@ type BattleResult = {
   enemyName: string;
   enemyMaxHp: number;
   enemySkillBoard: EnemySkill[];
+  coins: number;
   events: BattleEvent[];
 };
 
@@ -164,6 +200,7 @@ const statLabels: Record<StatKey, string> = {
 const normalAttack: Skill = {
   id: "normal",
   name: "通常攻撃",
+  effect: "attack",
   description: "敵1体に威力分のダメージ。",
 };
 
@@ -171,33 +208,75 @@ const skillPool: Skill[] = [
   {
     id: "heavy-slash",
     name: "強打",
+    effect: "heavySlash",
     description: "敵1体に威力+2ダメージ。",
   },
   {
     id: "guard",
     name: "ガード",
+    effect: "guard",
     description: "自分に体力分の一時HPを付与。",
   },
   {
     id: "quick-stab",
     name: "早駆け",
+    effect: "quickStab",
     description: "敵1体に機敏+1ダメージ。",
   },
   {
     id: "heal",
     name: "応急手当",
+    effect: "heal",
     description: "最もHP割合が低い味方を体力+2回復。",
   },
   {
     id: "firebolt",
     name: "火球",
+    effect: "firebolt",
     cost: 2,
     description: "マナ2相当。敵1体に威力+5ダメージ。",
   },
   {
     id: "rally",
     name: "号令",
+    effect: "rally",
     description: "味方全員を威力分回復。",
+  },
+  {
+    id: "spirit-slash",
+    name: "気合い斬り",
+    effect: "spiritSlash",
+    description: "威力分のダメージ。2回止まると自分のHPを50%回復。",
+  },
+  {
+    id: "poison-breath",
+    name: "毒吹き",
+    effect: "poison",
+    description: "敵に毒3を付与。毒は毎ターン減衰しながらダメージ。",
+  },
+  {
+    id: "focus",
+    name: "集中",
+    effect: "focus",
+    description: "集中1を獲得。次の攻撃ダメージが2倍。",
+  },
+  {
+    id: "slot",
+    name: "スロット",
+    effect: "slot",
+    description: "1D6を振り、出目と同じゴールドを獲得。",
+  },
+  {
+    id: "burning",
+    name: "燃焼",
+    effect: "burning",
+    description: "止まったマスに燃焼3を配置。通過すると3ダメージ。",
+  },
+  {
+    id: "dash",
+    name: "ダッシュ",
+    effect: "dash",
+    description: "迅速3を3ターン獲得。戦闘出目が+3される。",
   },
 ];
 
@@ -415,10 +494,21 @@ function getTileDescription(tile: Tile) {
 }
 
 function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): BattleResult {
-  const fighters = units.map((unit) => ({ ...unit, hp: Math.min(unit.hp, maxHp(unit)), tempHp: 0 }));
+  const fighters: BattleUnit[] = units.map((unit) => ({
+    ...unit,
+    hp: Math.min(unit.hp, maxHp(unit)),
+    tempHp: 0,
+    focus: 0,
+    swiftTurns: 0,
+    swiftBonus: 0,
+    charges: {},
+    burns: {},
+  }));
   const enemy = makeEnemy(battleCount);
   const logs: string[] = [`${enemy.name}が現れた。`];
   const events: BattleEvent[] = [];
+  let enemyPoison = 0;
+  let battleCoins = 0;
 
   for (const item of battleItems) {
     if (item.id === "potion") {
@@ -445,7 +535,139 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
     }
   }
 
+  function unitEvent(
+    unit: BattleUnit,
+    skill: Skill,
+    roll: number,
+    slotIndex: number,
+    text: string,
+    tone: Tone,
+    target: Extract<BattleEvent, { type: "unit" }>["target"],
+    value?: number,
+    targetUnitId?: string,
+  ) {
+    logs.push(text);
+    events.push({
+      type: "unit",
+      unitId: unit.id,
+      unitName: unit.name,
+      skillName: skill.name,
+      roll,
+      slotIndex,
+      nextIndex: unit.boardIndex,
+      text,
+      tone,
+      target,
+      targetUnitId,
+      value,
+    });
+  }
+
+  function effectEvent(text: string, tone: Tone, target: Extract<BattleEvent, { type: "effect" }>["target"], value?: number, targetUnitId?: string) {
+    logs.push(text);
+    events.push({ type: "effect", text, tone, target, value, targetUnitId });
+  }
+
+  function damageEnemy(unit: BattleUnit, baseDamage: number) {
+    const focused = unit.focus > 0;
+    if (focused) unit.focus -= 1;
+    const damage = focused ? baseDamage * 2 : baseDamage;
+    enemy.hp -= damage;
+    return { damage, focused };
+  }
+
+  function resolveUnitSkill(unit: BattleUnit, skill: Skill, slotIndex: number, roll: number) {
+    switch (skill.effect) {
+      case "guard": {
+        unit.tempHp += unit.stats.vitality;
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。一時HP+${unit.stats.vitality}。`, "good", "self", unit.stats.vitality);
+        return;
+      }
+      case "quickStab": {
+        const { damage, focused } = damageEnemy(unit, unit.stats.agility + 1);
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+        return;
+      }
+      case "heal": {
+        const target = fighters.filter((u) => u.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
+        const amount = unit.stats.vitality + 2;
+        target.hp = Math.min(maxHp(target), target.hp + amount);
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${target.name}を${amount}回復。`, "good", "ally", amount, target.id);
+        return;
+      }
+      case "firebolt": {
+        const { damage, focused } = damageEnemy(unit, unit.stats.power + 5);
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+        return;
+      }
+      case "rally": {
+        fighters.forEach((target) => {
+          if (target.hp > 0) target.hp = Math.min(maxHp(target), target.hp + unit.stats.power);
+        });
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。味方全員を${unit.stats.power}回復。`, "good", "party", unit.stats.power);
+        return;
+      }
+      case "heavySlash": {
+        const { damage, focused } = damageEnemy(unit, unit.stats.power + 2);
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+        return;
+      }
+      case "spiritSlash": {
+        const { damage, focused } = damageEnemy(unit, unit.stats.power);
+        unit.charges[skill.id] = (unit.charges[skill.id] ?? 0) + 1;
+        if (unit.charges[skill.id] >= 2) {
+          unit.charges[skill.id] = 0;
+          const heal = Math.ceil(maxHp(unit) * 0.5);
+          unit.hp = Math.min(maxHp(unit), unit.hp + heal);
+          unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。HPを${heal}回復。`, "good", "ally", heal, unit.id);
+          return;
+        }
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。チャージ${unit.charges[skill.id]}/2。`, "bad", "enemy", damage);
+        return;
+      }
+      case "poison": {
+        enemyPoison += 3;
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。敵に毒3を付与。`, "bad", "none");
+        return;
+      }
+      case "focus": {
+        unit.focus += 1;
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。集中+1。次の攻撃が2倍。`, "good", "self");
+        return;
+      }
+      case "slot": {
+        const gain = Math.ceil(Math.random() * 6);
+        battleCoins += gain;
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${gain}ゴールド獲得。`, "good", "coins", gain);
+        return;
+      }
+      case "burning": {
+        unit.burns[slotIndex] = (unit.burns[slotIndex] ?? 0) + 3;
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。このマスに燃焼3を配置。`, "bad", "none");
+        return;
+      }
+      case "dash": {
+        unit.swiftTurns = 3;
+        unit.swiftBonus = 3;
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。迅速3を3ターン獲得。`, "good", "self");
+        return;
+      }
+      case "attack":
+      default: {
+        const { damage, focused } = damageEnemy(unit, unit.stats.power);
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+      }
+    }
+  }
+
   for (let round = 1; round <= 10; round += 1) {
+    if (enemyPoison > 0) {
+      enemy.hp -= enemyPoison;
+      effectEvent(`毒で${enemyPoison}ダメージ。`, "bad", "enemy", enemyPoison);
+      enemyPoison = Math.max(0, enemyPoison - 1);
+    }
+    if (enemy.hp <= 0 || fighters.every((unit) => unit.hp <= 0)) break;
+
     const actors = [
       ...fighters.filter((unit) => unit.hp > 0).map((unit) => ({ type: "unit" as const, agility: unit.stats.agility, unit })),
       { type: "enemy" as const, agility: enemy.agility, unit: null },
@@ -525,150 +747,45 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
       }
 
       const unit = actor.unit;
-      const battleRoll = Math.ceil(Math.random() * 3);
-      const slotIndex = (unit.boardIndex + battleRoll) % unit.skillBoard.length;
+      const baseRoll = Math.ceil(Math.random() * 3);
+      const swiftBonus = unit.swiftTurns > 0 ? unit.swiftBonus : 0;
+      const battleRoll = baseRoll + swiftBonus;
+      if (unit.swiftTurns > 0) {
+        unit.swiftTurns -= 1;
+        if (unit.swiftTurns <= 0) unit.swiftBonus = 0;
+      }
+
+      let slotIndex = unit.boardIndex;
+      for (let step = 1; step <= battleRoll; step += 1) {
+        slotIndex = (unit.boardIndex + step) % unit.skillBoard.length;
+        if (unit.burns[slotIndex] > 0) {
+          const burnDamage = 3;
+          unit.hp = Math.max(0, unit.hp - burnDamage);
+          unit.burns[slotIndex] -= 1;
+          if (unit.burns[slotIndex] <= 0) delete unit.burns[slotIndex];
+          effectEvent(`${unit.name}?????????${burnDamage}?????`, "bad", "unit", burnDamage, unit.id);
+          if (unit.hp <= 0) break;
+        }
+      }
+      if (unit.hp <= 0) continue;
+
       const skill = unit.skillBoard[slotIndex];
       unit.boardIndex = slotIndex;
-
-      if (skill.id === "guard") {
-        unit.tempHp += unit.stats.vitality;
-        const text = `${unit.name}のガード。一時HP+${unit.stats.vitality}。`;
-        logs.push(text);
-        events.push({
-          type: "unit",
-          unitId: unit.id,
-          unitName: unit.name,
-          skillName: skill.name,
-          roll: battleRoll,
-          slotIndex,
-          nextIndex: unit.boardIndex,
-          text,
-          tone: "good",
-          target: "self",
-          value: unit.stats.vitality,
-        });
-      } else if (skill.id === "quick-stab") {
-        const damage = unit.stats.agility + 1;
-        enemy.hp -= damage;
-        const text = `${unit.name}の早駆け。${damage}ダメージ。`;
-        logs.push(text);
-        events.push({
-          type: "unit",
-          unitId: unit.id,
-          unitName: unit.name,
-          skillName: skill.name,
-          roll: battleRoll,
-          slotIndex,
-          nextIndex: unit.boardIndex,
-          text,
-          tone: "bad",
-          target: "enemy",
-          value: damage,
-        });
-      } else if (skill.id === "heal") {
-        const target = fighters.filter((u) => u.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
-        const amount = unit.stats.vitality + 2;
-        target.hp = Math.min(maxHp(target), target.hp + amount);
-        const text = `${unit.name}の応急手当。${target.name}を${amount}回復。`;
-        logs.push(text);
-        events.push({
-          type: "unit",
-          unitId: unit.id,
-          unitName: unit.name,
-          skillName: skill.name,
-          roll: battleRoll,
-          slotIndex,
-          nextIndex: unit.boardIndex,
-          text,
-          tone: "good",
-          target: "ally",
-          targetUnitId: target.id,
-          value: amount,
-        });
-      } else if (skill.id === "firebolt") {
-        const damage = unit.stats.power + 5;
-        enemy.hp -= damage;
-        const text = `${unit.name}の火球。${damage}ダメージ。`;
-        logs.push(text);
-        events.push({
-          type: "unit",
-          unitId: unit.id,
-          unitName: unit.name,
-          skillName: skill.name,
-          roll: battleRoll,
-          slotIndex,
-          nextIndex: unit.boardIndex,
-          text,
-          tone: "bad",
-          target: "enemy",
-          value: damage,
-        });
-      } else if (skill.id === "rally") {
-        fighters.forEach((u) => {
-          if (u.hp > 0) u.hp = Math.min(maxHp(u), u.hp + unit.stats.power);
-        });
-        const text = `${unit.name}の号令。味方全員を${unit.stats.power}回復。`;
-        logs.push(text);
-        events.push({
-          type: "unit",
-          unitId: unit.id,
-          unitName: unit.name,
-          skillName: skill.name,
-          roll: battleRoll,
-          slotIndex,
-          nextIndex: unit.boardIndex,
-          text,
-          tone: "good",
-          target: "party",
-          value: unit.stats.power,
-        });
-      } else if (skill.id === "heavy-slash") {
-        const damage = unit.stats.power + 2;
-        enemy.hp -= damage;
-        const text = `${unit.name}の強打。${damage}ダメージ。`;
-        logs.push(text);
-        events.push({
-          type: "unit",
-          unitId: unit.id,
-          unitName: unit.name,
-          skillName: skill.name,
-          roll: battleRoll,
-          slotIndex,
-          nextIndex: unit.boardIndex,
-          text,
-          tone: "bad",
-          target: "enemy",
-          value: damage,
-        });
-      } else {
-        const damage = unit.stats.power;
-        enemy.hp -= damage;
-        const text = `${unit.name}の通常攻撃。${damage}ダメージ。`;
-        logs.push(text);
-        events.push({
-          type: "unit",
-          unitId: unit.id,
-          unitName: unit.name,
-          skillName: skill.name,
-          roll: battleRoll,
-          slotIndex,
-          nextIndex: unit.boardIndex,
-          text,
-          tone: "bad",
-          target: "enemy",
-          value: damage,
-        });
-      }
+      resolveUnitSkill(unit, skill, slotIndex, battleRoll);
     }
   }
 
   return {
     win: enemy.hp <= 0,
     logs,
-    units: fighters.map(({ tempHp: _tempHp, ...unit }) => ({ ...unit, hp: Math.max(0, unit.hp) })),
+    units: fighters.map(({ tempHp: _tempHp, focus: _focus, swiftTurns: _swiftTurns, swiftBonus: _swiftBonus, charges: _charges, burns: _burns, ...unit }) => ({
+      ...unit,
+      hp: Math.max(0, unit.hp),
+    })),
     enemyName: enemy.name,
     enemyMaxHp: enemy.maxHp,
     enemySkillBoard: enemy.skillBoard,
+    coins: battleCoins,
     events,
   };
 }
@@ -975,6 +1092,27 @@ export function App() {
         continue;
       }
 
+      if (event.type === "effect") {
+        setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
+        await wait(battleTiming.skillActivate);
+        if (event.target === "enemy" && event.value) {
+          enemyHp = Math.max(0, enemyHp - event.value);
+          setBattleView((current) => current && { ...current, enemyHp });
+          addFloatingText("enemy", "enemy", `-${event.value}`, "bad");
+        } else if (event.target === "unit" && event.targetUnitId && event.value) {
+          setBattleUnits((current) =>
+            current.map((unit) => (unit.id === event.targetUnitId ? { ...unit, hp: Math.max(0, unit.hp - event.value!) } : unit)),
+          );
+          addFloatingText("unit", event.targetUnitId, `-${event.value}`, "bad");
+          void flashUnit(event.targetUnitId, "bad");
+        } else if (event.target === "coins" && event.value) {
+          setCoins((value) => value + event.value!);
+          await flashCoins(`+${event.value}`);
+        }
+        await wait(battleTiming.hpChange);
+        continue;
+      }
+
       if (event.type === "unit") {
         setActiveSkill(null);
         setBattleUnits((current) =>
@@ -1016,6 +1154,9 @@ export function App() {
           currentUnits.forEach((unit) => addFloatingText("unit", unit.id, `+${event.value}`, "good"));
         } else if (event.target === "self" && event.value) {
           addFloatingText("unit", event.unitId, `+${event.value}`, "good");
+        } else if (event.target === "coins" && event.value) {
+          setCoins((value) => value + event.value!);
+          await flashCoins(`+${event.value}`);
         }
         setUnits((current) =>
           current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.nextIndex } : unit)),
