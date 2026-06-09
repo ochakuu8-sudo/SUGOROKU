@@ -268,17 +268,6 @@ h3 {
   font-size: 9px;
 }
 
-.inlineDiceControl {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.inlineDiceControl > span {
-  white-space: nowrap;
-}
-
 .dieCube {
   display: inline-grid;
   place-items: center;
@@ -598,6 +587,39 @@ h3 {
   gap: 10px;
   padding: 16px;
   min-height: 0;
+}
+
+.dicePanel {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e1d8c5;
+}
+
+.dicePanel h2 {
+  margin: 0;
+}
+
+.dicePanelRows {
+  display: grid;
+  gap: 7px;
+}
+
+.diceModeRow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+}
+
+.diceModeRow > span {
+  color: #5f6b6e;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.diceModeRow .diceSelector {
+  justify-content: flex-start;
 }
 
 .itemList {

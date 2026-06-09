@@ -1713,13 +1713,6 @@ export function App() {
           <div className="boardHeader">
             <h2>共通盤面</h2>
             <div className="diceControlGroup">
-              <DiceSelector
-                dice={ownedDice}
-                selectedId={selectedExploreDieId}
-                onSelect={setSelectedExploreDieId}
-                disabled={phase !== "explore" || locked}
-                label="育成サイコロ"
-              />
               <button className={`primaryButton diceButton ${diceRolling ? "rolling" : ""}`} onClick={() => void rollDice()} disabled={phase !== "explore" || locked}>
                 <span className="dieCube" aria-hidden="true">
                   {diceRolling ? "?" : fixedRoll ?? lastRoll ?? selectedExploreDie.label}
@@ -1760,17 +1753,6 @@ export function App() {
 
           <div className="runControls">
             <span>直近出目: {lastRoll ?? "-"}</span>
-            <div className="inlineDiceControl">
-              <span>戦闘サイコロ</span>
-              <DiceSelector
-                dice={ownedDice}
-                selectedId={selectedBattleDieId}
-                onSelect={setSelectedBattleDieId}
-                disabled={locked}
-                compact
-                label="戦闘サイコロ"
-              />
-            </div>
             <span>次の戦闘まで: {5 - (turn % 5)}ターン</span>
             <button onClick={() => setPauseView("menu")} className="ghostButton" disabled={locked}>
               <Pause size={16} />
@@ -1788,6 +1770,33 @@ export function App() {
         </div>
 
         <aside className="sidePanel">
+          <section className="dicePanel">
+            <h2>サイコロ</h2>
+            <div className="dicePanelRows">
+              <div className="diceModeRow">
+                <span>育成</span>
+                <DiceSelector
+                  dice={ownedDice}
+                  selectedId={selectedExploreDieId}
+                  onSelect={setSelectedExploreDieId}
+                  disabled={phase !== "explore" || locked}
+                  compact
+                  label="育成サイコロ"
+                />
+              </div>
+              <div className="diceModeRow">
+                <span>戦闘</span>
+                <DiceSelector
+                  dice={ownedDice}
+                  selectedId={selectedBattleDieId}
+                  onSelect={setSelectedBattleDieId}
+                  disabled={locked}
+                  compact
+                  label="戦闘サイコロ"
+                />
+              </div>
+            </div>
+          </section>
           <h2>アイテム</h2>
           <div className={`itemList ${inventoryPulse ? "inventoryPulse" : ""}`}>
             {items.length === 0 && <p className="emptyText">未所持</p>}
@@ -1976,14 +1985,6 @@ export function App() {
                   </div>
                   <p>{battleView.message}</p>
                   <div className="battleCommands">
-                    <DiceSelector
-                      dice={ownedDice}
-                      selectedId={selectedBattleDieId}
-                      onSelect={setSelectedBattleDieId}
-                      disabled={phase === "battle"}
-                      compact
-                      label="戦闘サイコロ"
-                    />
                     <button
                       className={`primaryButton diceButton ${battleRolling ? "rolling" : ""}`}
                       onClick={() => void rollBattleDice()}
