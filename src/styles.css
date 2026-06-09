@@ -295,10 +295,43 @@ h3 {
   grid-template-columns: repeat(5, minmax(110px, 1fr));
   gap: 10px;
   margin-top: 16px;
+  position: relative;
+  background:
+    linear-gradient(#c9c2b1, #c9c2b1) 50% 25% / 80% 3px no-repeat,
+    linear-gradient(#c9c2b1, #c9c2b1) 50% 75% / 80% 3px no-repeat,
+    linear-gradient(#c9c2b1, #c9c2b1) 10% 50% / 3px 50% no-repeat,
+    linear-gradient(#c9c2b1, #c9c2b1) 90% 50% / 3px 50% no-repeat;
+  isolation: isolate;
+}
+
+.boardGrid .tile:nth-child(6) {
+  grid-column: 5;
+  grid-row: 2;
+}
+
+.boardGrid .tile:nth-child(7) {
+  grid-column: 4;
+  grid-row: 2;
+}
+
+.boardGrid .tile:nth-child(8) {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.boardGrid .tile:nth-child(9) {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.boardGrid .tile:nth-child(10) {
+  grid-column: 1;
+  grid-row: 2;
 }
 
 .tile {
   position: relative;
+  z-index: 1;
   display: grid;
   grid-template-rows: 20px 24px 1fr 18px;
   align-items: center;
@@ -702,10 +735,33 @@ h3 {
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 6px;
   min-width: 0;
+  position: relative;
+  background:
+    linear-gradient(#c9c2b1, #c9c2b1) 50% 25% / 66% 3px no-repeat,
+    linear-gradient(#c9c2b1, #c9c2b1) 50% 75% / 66% 3px no-repeat,
+    linear-gradient(#c9c2b1, #c9c2b1) 16.666% 50% / 3px 50% no-repeat,
+    linear-gradient(#c9c2b1, #c9c2b1) 83.333% 50% / 3px 50% no-repeat;
+  isolation: isolate;
+}
+
+.unitInfoSkillBoard .unitInfoSkill:nth-child(4) {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.unitInfoSkillBoard .unitInfoSkill:nth-child(5) {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.unitInfoSkillBoard .unitInfoSkill:nth-child(6) {
+  grid-column: 1;
+  grid-row: 2;
 }
 
 .unitInfoSkill {
   position: relative;
+  z-index: 1;
   display: grid;
   grid-template-rows: 11px 1fr;
   place-items: center;
@@ -1274,9 +1330,43 @@ h3 {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
+  position: relative;
+  background:
+    linear-gradient(#c9c2b1, #c9c2b1) 50% 25% / 80% 2px no-repeat,
+    linear-gradient(#c9c2b1, #c9c2b1) 50% 75% / 80% 2px no-repeat,
+    linear-gradient(#c9c2b1, #c9c2b1) 10% 50% / 2px 50% no-repeat,
+    linear-gradient(#c9c2b1, #c9c2b1) 90% 50% / 2px 50% no-repeat;
+  isolation: isolate;
+}
+
+.prepBoardGrid .prepBoardTile:nth-child(6) {
+  grid-column: 5;
+  grid-row: 2;
+}
+
+.prepBoardGrid .prepBoardTile:nth-child(7) {
+  grid-column: 4;
+  grid-row: 2;
+}
+
+.prepBoardGrid .prepBoardTile:nth-child(8) {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.prepBoardGrid .prepBoardTile:nth-child(9) {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.prepBoardGrid .prepBoardTile:nth-child(10) {
+  grid-column: 1;
+  grid-row: 2;
 }
 
 .prepBoardTile {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-rows: 14px 20px 1fr 14px;
   align-items: center;
@@ -1595,7 +1685,7 @@ h3 {
   }
 
   .boardGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .choiceGrid,
@@ -1616,11 +1706,11 @@ h3 {
   }
 
   .boardGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .tile {
-    min-height: 86px;
+    min-height: 62px;
   }
 
   .diceAnimationCard {
@@ -2732,8 +2822,8 @@ h3 {
   }
 
   .unitInfoSkillBoard {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
     gap: 3px;
     min-height: 0;
   }
