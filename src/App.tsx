@@ -952,7 +952,7 @@ export function App() {
   const [showLog, setShowLog] = useState(false);
   const [skillPopup, setSkillPopup] = useState<Skill | null>(null);
   const [pauseView, setPauseView] = useState<PauseView | null>(null);
-  const battleRollResolver = useRef<(() => void) | null>(null);
+  const battleRollResolver = useRef<((roll: number) => void) | null>(null);
   const battleRollValue = useRef<number | null>(null);
   const diceRouletteTimer = useRef<number | null>(null);
   const diceRouletteValue = useRef(1);
@@ -960,7 +960,6 @@ export function App() {
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
   const skillCatalog = useMemo(() => [normalAttack, ...skillPool], []);
   const selectedExploreDie = useMemo(() => ownedDice.find((die) => die.id === selectedExploreDieId) ?? ownedDice[0], [ownedDice, selectedExploreDieId]);
-  const selectedBattleDie = useMemo(() => ownedDice.find((die) => die.id === selectedBattleDieId) ?? ownedDice[0], [ownedDice, selectedBattleDieId]);
   const locked = phase === "animating" || phase === "battle";
 
   function pushLog(message: string) {
@@ -1165,27 +1164,30 @@ export function App() {
     }
   }
 
-  function waitForBattleRoll(roll: number) {
-    battleRollValue.current = roll;
+  function waitForBattleRoll() {
+    battleRollValue.current = null;
     setBattleAwaitingRoll(true);
     setBattleRolling(false);
     setBattleView((current) => current && { ...current, message: "サイコロを振ってください", tone: "neutral" });
-    return new Promise<void>((resolve) => {
+    return new Promise<number>((resolve) => {
       battleRollResolver.current = resolve;
     });
   }
 
-  async function rollBattleDice() {
+  async function rollBattleDice(die: GameDie) {
     if (phase !== "battle" || !battleAwaitingRoll || battleRolling) return;
     setBattleRolling(true);
+    setSelectedBattleDieId(die.id);
     setBattleView((current) => current && { ...current, message: "サイコロを振っています...", tone: "neutral" });
-    await playDiceAnimation(selectedBattleDie.name, battleRollValue.current ?? rollGameDie(selectedBattleDie));
+    const roll = rollGameDie(die);
+    battleRollValue.current = roll;
+    await playDiceAnimation(die.name, roll);
     setBattleRolling(false);
     setBattleAwaitingRoll(false);
     battleRollValue.current = null;
     const resolve = battleRollResolver.current;
     battleRollResolver.current = null;
-    resolve?.();
+    resolve?.(roll);
   }
 
   async function animateBattleUnitMove(unitId: string, steps: number) {
@@ -1205,48 +1207,39 @@ export function App() {
     const nextBattle = battleCount + 1;
     const usedBattleItems = battleItems;
     setBattleItems([]);
-    const result = runBattle(currentUnits, nextBattle, usedBattleItems, selectedBattleDie);
-    setBattleUnits(currentUnits.map((unit) => ({ ...unit })));
+    const fighters: BattleUnit[] = currentUnits.map((unit) => ({
+      ...unit,
+      hp: Math.min(unit.hp, maxHp(unit)),
+      tempHp: 0,
+      focus: 0,
+      swiftTurns: 0,
+      swiftBonus: 0,
+      mana: 0,
+      charges: {},
+      burns: {},
+    }));
+    const enemy = makeEnemy(nextBattle);
+    const logs: string[] = [`${enemy.name}が現れた。`];
+    let enemyPoison = 0;
+    let battleCoins = 0;
+    let enemyHp = enemy.maxHp;
 
-    setBattleView({
-      enemyName: result.enemyName,
-      enemyHp: result.enemyMaxHp,
-      enemyMaxHp: result.enemyMaxHp,
-      enemySkillBoard: result.enemySkillBoard,
-      enemyBoardIndex: 0,
-      message: `${result.enemyName}が現れた`,
-      tone: "neutral",
-    });
-    await wait(battleTiming.start);
+    const snapshotUnits = () =>
+      fighters.map(({ tempHp: _tempHp, focus: _focus, swiftTurns: _swiftTurns, swiftBonus: _swiftBonus, mana: _mana, charges: _charges, burns: _burns, ...unit }) => ({
+        ...unit,
+        hp: Math.max(0, unit.hp),
+      }));
 
-    let enemyHp = result.enemyMaxHp;
-    for (const event of result.events) {
-      if (event.type === "item") {
-        setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
-        await wait(battleTiming.skillActivate);
-        if (event.text.includes("14")) {
-          enemyHp = Math.max(0, enemyHp - 14);
-          setBattleView((current) => current && { ...current, enemyHp });
-          addFloatingText("enemy", "enemy", "-14", "bad");
-        }
-        if (event.text.includes("回復")) {
-          setBattleUnits((current) => current.map((unit) => ({ ...unit, hp: Math.min(maxHp(unit), unit.hp + 8) })));
-        }
-        await wait(battleTiming.item);
-        continue;
-      }
-
+    async function playEvent(event: BattleEvent) {
       if (event.type === "effect") {
         setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
         await wait(battleTiming.skillActivate);
         if (event.target === "enemy" && event.value) {
-          enemyHp = Math.max(0, enemyHp - event.value);
+          enemyHp = Math.max(0, enemy.hp);
           setBattleView((current) => current && { ...current, enemyHp });
           addFloatingText("enemy", "enemy", `-${event.value}`, "bad");
         } else if (event.target === "unit" && event.targetUnitId && event.value) {
-          setBattleUnits((current) =>
-            current.map((unit) => (unit.id === event.targetUnitId ? { ...unit, hp: Math.max(0, unit.hp - event.value!) } : unit)),
-          );
+          setBattleUnits(snapshotUnits());
           addFloatingText("unit", event.targetUnitId, `-${event.value}`, "bad");
           void flashUnit(event.targetUnitId, "bad");
         } else if (event.target === "coins" && event.value) {
@@ -1254,29 +1247,12 @@ export function App() {
           await flashCoins(`+${event.value}`);
         }
         await wait(battleTiming.hpChange);
-        continue;
+        return;
       }
 
       if (event.type === "unit") {
-        if (event.roll > 0) await waitForBattleRoll(event.roll);
-        setActiveSkill(null);
-        setBattleView((current) =>
-          current && {
-            ...current,
-            enemyHp: current.enemyHp,
-            activeUnitId: event.unitId,
-            activeSlot: undefined,
-            tone: "neutral",
-          },
-        );
-        if (event.roll > 0) {
-          await animateBattleUnitMove(event.unitId, event.roll);
-        }
-        setBattleUnits((current) =>
-          current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.slotIndex } : unit)),
-        );
         setBattleView((current) => current && { ...current, activeSlot: event.slotIndex });
-        await wait(event.roll > 0 ? 120 : battleTiming.stepToSkill);
+        await wait(battleTiming.stepToSkill);
         setActiveSkill({ unitId: event.unitId, slotIndex: event.slotIndex });
         setBattleView((current) =>
           current && {
@@ -1287,84 +1263,424 @@ export function App() {
         );
         await wait(battleTiming.skillActivate);
         if (event.target === "enemy" && event.value) {
-          enemyHp = Math.max(0, enemyHp - event.value);
+          enemyHp = Math.max(0, enemy.hp);
           setBattleView((current) => current && { ...current, enemyHp });
           addFloatingText("enemy", "enemy", `-${event.value}`, "bad");
         } else if (event.targetUnitId && event.value) {
-          setBattleUnits((current) =>
-            current.map((unit) =>
-              unit.id === event.targetUnitId ? { ...unit, hp: Math.min(maxHp(unit), unit.hp + event.value!) } : unit,
-            ),
-          );
+          setBattleUnits(snapshotUnits());
           addFloatingText("unit", event.targetUnitId, `+${event.value}`, "good");
           void flashUnit(event.targetUnitId, "good");
         } else if (event.target === "party" && event.value) {
-          setBattleUnits((current) => current.map((unit) => ({ ...unit, hp: Math.min(maxHp(unit), unit.hp + event.value!) })));
-          currentUnits.forEach((unit) => addFloatingText("unit", unit.id, `+${event.value}`, "good"));
+          setBattleUnits(snapshotUnits());
+          fighters.forEach((unit) => addFloatingText("unit", unit.id, `+${event.value}`, "good"));
         } else if (event.target === "self" && event.value) {
           addFloatingText("unit", event.unitId, `+${event.value}`, "good");
         } else if (event.target === "coins" && event.value) {
           setCoins((value) => value + event.value!);
           await flashCoins(`+${event.value}`);
         }
-        setUnits((current) =>
-          current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.nextIndex } : unit)),
-        );
+        setUnits(snapshotUnits());
         setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
         await wait(battleTiming.hpChange);
-        setBattleUnits((current) =>
-          current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.nextIndex } : unit)),
-        );
+        setBattleUnits(snapshotUnits());
         setActiveSkill(null);
-        continue;
+        return;
       }
 
-      setActiveEnemySkill(null);
-      setBattleView(
-        (current) =>
-          current && {
-            ...current,
-            activeUnitId: undefined,
-            activeSlot: undefined,
-            enemyBoardIndex: event.slotIndex,
-            tone: "neutral",
-          },
-      );
-      await wait(battleTiming.stepToSkill);
-      setActiveEnemySkill(event.slotIndex);
-      setBattleView((current) => current && { ...current, message: `${event.skillName} 発動`, tone: event.tone });
-      await wait(battleTiming.skillActivate);
+      if (event.type === "enemy") {
+        setActiveEnemySkill(null);
+        setBattleView(
+          (current) =>
+            current && {
+              ...current,
+              activeUnitId: undefined,
+              activeSlot: undefined,
+              enemyBoardIndex: event.slotIndex,
+              tone: "neutral",
+            },
+        );
+        await wait(battleTiming.stepToSkill);
+        setActiveEnemySkill(event.slotIndex);
+        setBattleView((current) => current && { ...current, message: `${event.skillName} 発動`, tone: event.tone });
+        await wait(battleTiming.skillActivate);
 
-      if (event.target === "self" && event.value) {
-        enemyHp = Math.min(result.enemyMaxHp, enemyHp + event.value);
-        setBattleView((current) => current && { ...current, enemyHp });
-        addFloatingText("enemy", "enemy", `+${event.value}`, "good");
-      } else if (event.target === "party" && event.value) {
-        setBattleUnits((current) =>
-          current.map((unit) => (unit.hp > 0 ? { ...unit, hp: Math.max(0, unit.hp - event.value!) } : unit)),
-        );
-        currentUnits.forEach((unit) => addFloatingText("unit", unit.id, `-${event.value}`, "bad"));
-      } else if (event.targetUnitId && event.value) {
-        setBattleUnits((current) =>
-          current.map((unit) => (unit.id === event.targetUnitId ? { ...unit, hp: Math.max(0, unit.hp - event.value!) } : unit)),
-        );
-        addFloatingText("unit", event.targetUnitId, `-${event.value}`, "bad");
-        void flashUnit(event.targetUnitId, "bad");
+        if (event.target === "self" && event.value) {
+          enemyHp = Math.min(enemy.maxHp, enemy.hp);
+          setBattleView((current) => current && { ...current, enemyHp });
+          addFloatingText("enemy", "enemy", `+${event.value}`, "good");
+        } else if (event.target === "party" && event.value) {
+          setBattleUnits(snapshotUnits());
+          fighters.forEach((unit) => addFloatingText("unit", unit.id, `-${event.value}`, "bad"));
+        } else if (event.targetUnitId && event.value) {
+          setBattleUnits(snapshotUnits());
+          addFloatingText("unit", event.targetUnitId, `-${event.value}`, "bad");
+          void flashUnit(event.targetUnitId, "bad");
+        }
+
+        setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
+        await wait(battleTiming.hpChange);
+        setBattleView((current) => current && { ...current, enemyBoardIndex: event.nextIndex });
+        setActiveEnemySkill(null);
       }
-
-      setBattleView((current) => current && { ...current, message: event.text, tone: event.tone });
-      await wait(battleTiming.hpChange);
-      setBattleView((current) => current && { ...current, enemyBoardIndex: event.nextIndex });
-      setActiveEnemySkill(null);
     }
-    setLog((current) => [...result.logs.reverse(), ...current].slice(0, 12));
-    setUnits(result.units);
+
+    async function playItem(text: string, tone: Tone, applyView?: () => void) {
+      logs.push(text);
+      setBattleView((current) => current && { ...current, message: text, tone });
+      await wait(battleTiming.skillActivate);
+      applyView?.();
+      await wait(battleTiming.item);
+    }
+
+    async function unitEvent(
+      unit: BattleUnit,
+      skill: Skill,
+      roll: number,
+      slotIndex: number,
+      text: string,
+      tone: Tone,
+      target: Extract<BattleEvent, { type: "unit" }>["target"],
+      value?: number,
+      targetUnitId?: string,
+    ) {
+      logs.push(text);
+      await playEvent({
+        type: "unit",
+        unitId: unit.id,
+        unitName: unit.name,
+        skillName: skill.name,
+        roll,
+        slotIndex,
+        nextIndex: unit.boardIndex,
+        text,
+        tone,
+        target,
+        targetUnitId,
+        value,
+      });
+    }
+
+    async function effectEvent(text: string, tone: Tone, target: Extract<BattleEvent, { type: "effect" }>["target"], value?: number, targetUnitId?: string) {
+      logs.push(text);
+      await playEvent({ type: "effect", text, tone, target, value, targetUnitId });
+    }
+
+    function damageEnemy(unit: BattleUnit, baseDamage: number) {
+      const focused = unit.focus > 0;
+      if (focused) unit.focus -= 1;
+      const damage = focused ? baseDamage * 2 : baseDamage;
+      enemy.hp -= damage;
+      return { damage, focused };
+    }
+
+    function spendMana(unit: BattleUnit, amount: number) {
+      if (unit.mana < amount) return false;
+      unit.mana -= amount;
+      return true;
+    }
+
+    async function triggerPassEffects(unit: BattleUnit, slotIndex: number) {
+      if (unit.burns[slotIndex] > 0) {
+        const burnDamage = 3;
+        unit.hp = Math.max(0, unit.hp - burnDamage);
+        unit.burns[slotIndex] -= 1;
+        if (unit.burns[slotIndex] <= 0) delete unit.burns[slotIndex];
+        await effectEvent(`${unit.name}が燃焼マスを通過。${burnDamage}ダメージ。`, "bad", "unit", burnDamage, unit.id);
+        if (unit.hp <= 0) return true;
+      }
+
+      const passSkill = unit.skillBoard[slotIndex];
+      if (passSkill.effect === "tackle") {
+        const { damage, focused } = damageEnemy(unit, 2);
+        await effectEvent(`${unit.name}が${passSkill.name}を通過。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+      }
+
+      return enemy.hp <= 0;
+    }
+
+    async function resolveUnitSkill(unit: BattleUnit, skill: Skill, slotIndex: number, roll: number, chainDepth = 0): Promise<void> {
+      switch (skill.effect) {
+        case "guard": {
+          unit.tempHp += skillValues.guard;
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。一時HP+${skillValues.guard}。`, "good", "self", skillValues.guard);
+          return;
+        }
+        case "quickStab": {
+          const { damage, focused } = damageEnemy(unit, skillValues.quickStab);
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+          return;
+        }
+        case "heal": {
+          const target = fighters.filter((u) => u.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
+          const amount = skillValues.heal;
+          target.hp = Math.min(maxHp(target), target.hp + amount);
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${target.name}を${amount}回復。`, "good", "ally", amount, target.id);
+          return;
+        }
+        case "firebolt": {
+          if (!spendMana(unit, skill.cost ?? 2)) {
+            await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。マナ不足。`, "neutral", "none");
+            return;
+          }
+          const { damage, focused } = damageEnemy(unit, skillValues.firebolt);
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+          return;
+        }
+        case "rally": {
+          fighters.forEach((target) => {
+            if (target.hp > 0) target.hp = Math.min(maxHp(target), target.hp + skillValues.rally);
+          });
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。味方全員を${skillValues.rally}回復。`, "good", "party", skillValues.rally);
+          return;
+        }
+        case "heavySlash": {
+          const { damage, focused } = damageEnemy(unit, skillValues.heavySlash);
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+          return;
+        }
+        case "spiritSlash": {
+          const { damage, focused } = damageEnemy(unit, skillValues.spiritSlash);
+          unit.charges[skill.id] = (unit.charges[skill.id] ?? 0) + 1;
+          if (unit.charges[skill.id] >= 2) {
+            unit.charges[skill.id] = 0;
+            const heal = Math.ceil(maxHp(unit) * 0.5);
+            unit.hp = Math.min(maxHp(unit), unit.hp + heal);
+            await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。HPを${heal}回復。`, "good", "ally", heal, unit.id);
+            return;
+          }
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。チャージ${unit.charges[skill.id]}/2。`, "bad", "enemy", damage);
+          return;
+        }
+        case "poison": {
+          enemyPoison += 3;
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。敵に毒3を付与。`, "bad", "none");
+          return;
+        }
+        case "focus": {
+          unit.focus += 1;
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。集中+1。次の攻撃が2倍。`, "good", "self");
+          return;
+        }
+        case "meditate": {
+          unit.mana += 2;
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。マナ+2。現在${unit.mana}。`, "good", "self");
+          return;
+        }
+        case "stance": {
+          if (!spendMana(unit, skill.cost ?? 1)) {
+            await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。マナ不足。`, "neutral", "none");
+            return;
+          }
+          if (chainDepth >= unit.skillBoard.length) {
+            await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。これ以上は進めない。`, "neutral", "none");
+            return;
+          }
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。マナ1消費して1マス進む。`, "good", "none");
+          const nextSlotIndex = (unit.boardIndex + 1) % unit.skillBoard.length;
+          unit.boardIndex = nextSlotIndex;
+          setBattleUnits(snapshotUnits());
+          await wait(130);
+          if (await triggerPassEffects(unit, nextSlotIndex) || unit.hp <= 0 || enemy.hp <= 0) return;
+          const nextSkill = unit.skillBoard[nextSlotIndex];
+          await resolveUnitSkill(unit, nextSkill, nextSlotIndex, 0, chainDepth + 1);
+          return;
+        }
+        case "slot": {
+          const gain = Math.ceil(Math.random() * 6);
+          battleCoins += gain;
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${gain}ゴールド獲得。`, "good", "coins", gain);
+          return;
+        }
+        case "burning": {
+          unit.burns[slotIndex] = (unit.burns[slotIndex] ?? 0) + 3;
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。このマスに燃焼3を配置。`, "bad", "none");
+          return;
+        }
+        case "tackle": {
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。このマスは通過時に敵へ2ダメージ。`, "neutral", "none");
+          return;
+        }
+        case "dash": {
+          unit.swiftTurns = 3;
+          unit.swiftBonus = 3;
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。迅速3を3ターン獲得。`, "good", "self");
+          return;
+        }
+        case "attack":
+        default: {
+          const { damage, focused } = damageEnemy(unit, skillValues.attack);
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
+        }
+      }
+    }
+
+    setBattleUnits(snapshotUnits());
+
+    setBattleView({
+      enemyName: enemy.name,
+      enemyHp: enemy.maxHp,
+      enemyMaxHp: enemy.maxHp,
+      enemySkillBoard: enemy.skillBoard,
+      enemyBoardIndex: 0,
+      message: `${enemy.name}が現れた`,
+      tone: "neutral",
+    });
+    await wait(battleTiming.start);
+
+    for (const item of usedBattleItems) {
+      if (item.id === "potion") {
+        fighters.forEach((unit) => {
+          unit.hp = Math.min(maxHp(unit), unit.hp + 8);
+        });
+        await playItem("応急薬で味方全員を回復。", "good", () => {
+          setBattleUnits(snapshotUnits());
+          fighters.forEach((unit) => addFloatingText("unit", unit.id, "+8", "good"));
+        });
+      }
+      if (item.id === "bomb") {
+        enemy.hp -= 14;
+        await playItem("爆弾で敵に14ダメージ。", "bad", () => {
+          enemyHp = Math.max(0, enemy.hp);
+          setBattleView((current) => current && { ...current, enemyHp });
+          addFloatingText("enemy", "enemy", "-14", "bad");
+        });
+      }
+      if (item.id === "charm") {
+        fighters.forEach((unit) => {
+          unit.tempHp += 8;
+        });
+        await playItem("護符で味方全員に一時HP。", "good");
+      }
+    }
+
+    for (let round = 1; round <= 10; round += 1) {
+      if (enemyPoison > 0) {
+        enemy.hp -= enemyPoison;
+        await effectEvent(`毒で${enemyPoison}ダメージ。`, "bad", "enemy", enemyPoison);
+        enemyPoison = Math.max(0, enemyPoison - 1);
+      }
+      if (enemy.hp <= 0 || fighters.every((unit) => unit.hp <= 0)) break;
+
+      const actors = [
+        ...fighters.filter((unit) => unit.hp > 0).map((unit) => ({ type: "unit" as const, agility: 10, unit })),
+        { type: "enemy" as const, agility: enemy.agility, unit: null },
+      ].sort((a, b) => b.agility - a.agility);
+
+      for (const actor of actors) {
+        if (enemy.hp <= 0 || fighters.every((unit) => unit.hp <= 0)) break;
+
+        if (actor.type === "unit") {
+          const unit = actor.unit;
+          setActiveSkill(null);
+          setBattleView((current) =>
+            current && {
+              ...current,
+              enemyHp: current.enemyHp,
+              activeUnitId: unit.id,
+              activeSlot: undefined,
+              tone: "neutral",
+            },
+          );
+          const baseRoll = await waitForBattleRoll();
+          const swiftBonus = unit.swiftTurns > 0 ? unit.swiftBonus : 0;
+          const battleRoll = baseRoll + swiftBonus;
+          if (unit.swiftTurns > 0) {
+            unit.swiftTurns -= 1;
+            if (unit.swiftTurns <= 0) unit.swiftBonus = 0;
+          }
+
+          for (let step = 1; step <= battleRoll; step += 1) {
+            unit.boardIndex = (unit.boardIndex + 1) % unit.skillBoard.length;
+            setBattleUnits(snapshotUnits());
+            await wait(130);
+            if (await triggerPassEffects(unit, unit.boardIndex)) break;
+          }
+          if (unit.hp <= 0 || enemy.hp <= 0) continue;
+
+          const slotIndex = unit.boardIndex;
+          const skill = unit.skillBoard[slotIndex];
+          await resolveUnitSkill(unit, skill, slotIndex, battleRoll);
+          continue;
+        }
+
+        const slotIndex = enemy.boardIndex % enemy.skillBoard.length;
+        const skill = enemy.skillBoard[slotIndex];
+        enemy.boardIndex = (enemy.boardIndex + 1) % enemy.skillBoard.length;
+
+        if (skill.effect === "recover") {
+          const amount = Math.ceil(enemy.power * 1.2);
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+          const text = `${enemy.name}の${skill.name}。HPを${amount}回復。`;
+          logs.push(text);
+          await playEvent({
+            type: "enemy",
+            enemyName: enemy.name,
+            skillName: skill.name,
+            slotIndex,
+            nextIndex: enemy.boardIndex,
+            text,
+            target: "self",
+            value: amount,
+            tone: "good",
+          });
+          continue;
+        }
+
+        if (skill.effect === "cleave") {
+          const damage = Math.max(1, Math.floor(enemy.power * 0.55));
+          fighters.forEach((target) => {
+            if (target.hp <= 0) return;
+            const absorbed = Math.min(target.tempHp, damage);
+            target.tempHp -= absorbed;
+            target.hp -= damage - absorbed;
+          });
+          const text = `${enemy.name}の${skill.name}。味方全員に${damage}ダメージ。`;
+          logs.push(text);
+          await playEvent({
+            type: "enemy",
+            enemyName: enemy.name,
+            skillName: skill.name,
+            slotIndex,
+            nextIndex: enemy.boardIndex,
+            text,
+            target: "party",
+            value: damage,
+            tone: "bad",
+          });
+          continue;
+        }
+
+        const target = fighters.filter((unit) => unit.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
+        const damage = skill.effect === "heavy" ? enemy.power + 3 : enemy.power;
+        const absorbed = Math.min(target.tempHp, damage);
+        target.tempHp -= absorbed;
+        target.hp -= damage - absorbed;
+        const text = `${enemy.name}の${skill.name}。${target.name}に${damage}ダメージ。`;
+        logs.push(text);
+        await playEvent({
+          type: "enemy",
+          enemyName: enemy.name,
+          skillName: skill.name,
+          slotIndex,
+          nextIndex: enemy.boardIndex,
+          text,
+          target: "unit",
+          targetUnitId: target.id,
+          value: damage,
+          tone: "bad",
+        });
+      }
+    }
+
+    const win = enemy.hp <= 0;
+    setLog((current) => [...logs.reverse(), ...current].slice(0, 12));
+    setUnits(snapshotUnits());
     setBattleView((current) =>
       current && {
         ...current,
         enemyHp: Math.max(0, enemyHp),
-        message: result.win ? "勝利" : "敗北",
-        tone: result.win ? "good" : "bad",
+        message: win ? "勝利" : "敗北",
+        tone: win ? "good" : "bad",
       },
     );
     await wait(battleTiming.finish);
@@ -1375,7 +1691,7 @@ export function App() {
     battleRollResolver.current = null;
     battleRollValue.current = null;
 
-    if (!result.win) {
+    if (!win) {
       setBattleView(null);
       setBattleUnits([]);
       setBanner(null);
@@ -1784,17 +2100,6 @@ export function App() {
                   label="育成サイコロ"
                 />
               </div>
-              <div className="diceModeRow">
-                <span>戦闘</span>
-                <DiceSelector
-                  dice={ownedDice}
-                  selectedId={selectedBattleDieId}
-                  onSelect={setSelectedBattleDieId}
-                  disabled={locked}
-                  compact
-                  label="戦闘サイコロ"
-                />
-              </div>
             </div>
           </section>
           <h2>アイテム</h2>
@@ -1985,16 +2290,19 @@ export function App() {
                   </div>
                   <p>{battleView.message}</p>
                   <div className="battleCommands">
-                    <button
-                      className={`primaryButton diceButton ${battleRolling ? "rolling" : ""}`}
-                      onClick={() => void rollBattleDice()}
-                      disabled={!battleAwaitingRoll || battleRolling}
-                    >
-                      <span className="dieCube" aria-hidden="true">
-                        {battleRolling ? "?" : selectedBattleDie.label}
-                      </span>
-                      {battleRolling ? "..." : `${selectedBattleDie.name}を振る`}
-                    </button>
+                    {ownedDice.map((die) => (
+                      <button
+                        key={`battle-roll-${die.id}`}
+                        className={`primaryButton diceButton battleDiceButton ${battleRolling && selectedBattleDieId === die.id ? "rolling" : ""}`}
+                        onClick={() => void rollBattleDice(die)}
+                        disabled={!battleAwaitingRoll || battleRolling}
+                      >
+                        <span className="dieCube" aria-hidden="true">
+                          {battleRolling && selectedBattleDieId === die.id ? "?" : die.label}
+                        </span>
+                        {dieDisplayName(die)}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </>

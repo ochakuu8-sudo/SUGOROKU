@@ -1217,7 +1217,11 @@ h3 {
 }
 
 .battleCommands .primaryButton {
-  min-width: 168px;
+  min-width: 118px;
+}
+
+.battleDiceButton {
+  padding-inline: 10px;
 }
 
 .enemyCard {
