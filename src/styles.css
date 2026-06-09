@@ -597,7 +597,39 @@ h3 {
 }
 
 .unitInfoPanel.battleInfo {
-  grid-template-rows: 22px 10px 30px 120px;
+  grid-template-rows: 26px 12px 34px 220px;
+  min-height: 320px;
+  padding: 14px;
+}
+
+.unitInfoPanel.battleInfo .unitInfoHead h3 {
+  font-size: 16px;
+}
+
+.unitInfoPanel.battleInfo .unitInfoHead span {
+  font-size: 13px;
+}
+
+.unitInfoPanel.battleInfo .unitInfoStats span {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+.unitInfoPanel.battleInfo .unitInfoSkillBoard {
+  gap: 10px;
+}
+
+.unitInfoPanel.battleInfo .unitInfoSkill {
+  grid-template-rows: 14px 1fr;
+  min-height: 96px;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.08;
+}
+
+.unitInfoPanel.battleInfo .unitInfoSkill small {
+  font-size: 10px;
 }
 
 .unitInfoPanel.selectable {
@@ -1042,7 +1074,8 @@ h3 {
 
 .battleUnits {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, min(560px, 100%));
+  justify-content: center;
   gap: 10px;
 }
 
@@ -2387,8 +2420,20 @@ h3 {
   }
 
   .unitInfoPanel.battleInfo {
-    grid-template-rows: 16px 5px 18px 64px;
-    min-height: 112px;
+    grid-template-rows: 18px 6px 20px 92px;
+    min-height: 146px;
+    padding: 6px;
+  }
+
+  .unitInfoPanel.battleInfo .unitInfoSkillBoard {
+    gap: 4px;
+  }
+
+  .unitInfoPanel.battleInfo .unitInfoSkill {
+    grid-template-rows: 9px 1fr;
+    min-height: 42px;
+    padding: 3px;
+    font-size: 9px;
   }
 
   .unitInfoHead {
@@ -2682,6 +2727,28 @@ h3 {
 
   .unitInfoSkill small {
     font-size: 7px;
+  }
+
+  .battleUnits {
+    grid-template-columns: minmax(0, min(420px, 100%));
+    justify-content: center;
+  }
+
+  .unitInfoPanel.battleInfo {
+    grid-template-rows: 15px 5px 17px minmax(0, 1fr);
+    padding: 6px;
+  }
+
+  .unitInfoPanel.battleInfo .unitInfoSkillBoard {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .unitInfoPanel.battleInfo .unitInfoSkill {
+    grid-template-rows: 9px minmax(0, 1fr);
+    padding: 3px;
+    font-size: 9px;
   }
 }
 
