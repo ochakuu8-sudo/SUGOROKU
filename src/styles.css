@@ -898,6 +898,16 @@ h3 {
   animation: log-in 0.24s ease both;
 }
 
+.battleCommands {
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.battleCommands .primaryButton {
+  min-width: 168px;
+}
+
 .enemyCard {
   position: relative;
   display: grid;

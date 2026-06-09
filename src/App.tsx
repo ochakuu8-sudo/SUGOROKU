@@ -17,7 +17,7 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 type StatKey = "vitality" | "power" | "agility";
 type TileType = "empty" | "training" | "item" | "treasure" | "skill" | "shop" | "inn";
@@ -851,12 +851,15 @@ export function App() {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
   const [battleView, setBattleView] = useState<BattleView | null>(null);
   const [battleUnits, setBattleUnits] = useState<Unit[]>([]);
+  const [battleAwaitingRoll, setBattleAwaitingRoll] = useState(false);
+  const [battleRolling, setBattleRolling] = useState(false);
   const [rewardPulse, setRewardPulse] = useState<number | null>(null);
   const [inventoryPulse, setInventoryPulse] = useState(false);
   const [coinPulse, setCoinPulse] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [skillPopup, setSkillPopup] = useState<Skill | null>(null);
   const [pauseView, setPauseView] = useState<PauseView | null>(null);
+  const battleRollResolver = useRef<(() => void) | null>(null);
 
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
   const skillCatalog = useMemo(() => [normalAttack, ...skillPool], []);
@@ -1078,6 +1081,27 @@ export function App() {
     await finishTurn(nextUnits);
   }
 
+  function waitForBattleRoll() {
+    setBattleAwaitingRoll(true);
+    setBattleRolling(false);
+    setBattleView((current) => current && { ...current, message: "サイコロを振ってください", tone: "neutral" });
+    return new Promise<void>((resolve) => {
+      battleRollResolver.current = resolve;
+    });
+  }
+
+  async function rollBattleDice() {
+    if (phase !== "battle" || !battleAwaitingRoll || battleRolling) return;
+    setBattleRolling(true);
+    setBattleView((current) => current && { ...current, message: "サイコロを振っています...", tone: "neutral" });
+    await wait(420);
+    setBattleRolling(false);
+    setBattleAwaitingRoll(false);
+    const resolve = battleRollResolver.current;
+    battleRollResolver.current = null;
+    resolve?.();
+  }
+
   async function startBattle(currentUnits: Unit[]) {
     setPhase("battle");
     setBanner("戦闘開始");
@@ -1137,6 +1161,7 @@ export function App() {
       }
 
       if (event.type === "unit") {
+        await waitForBattleRoll();
         setActiveSkill(null);
         setBattleUnits((current) =>
           current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.slotIndex } : unit)),
@@ -1242,6 +1267,9 @@ export function App() {
       },
     );
     await wait(battleTiming.finish);
+    setBattleAwaitingRoll(false);
+    setBattleRolling(false);
+    battleRollResolver.current = null;
 
     if (!result.win) {
       setBattleView(null);
@@ -1266,6 +1294,9 @@ export function App() {
     setRewards(uniqueRewards(3));
     setBattleView(null);
     setBattleUnits([]);
+    setBattleAwaitingRoll(false);
+    setBattleRolling(false);
+    battleRollResolver.current = null;
     setBanner(null);
     setPhase("reward");
   }
@@ -1441,9 +1472,13 @@ export function App() {
     setInstalledTileIndex(null);
     setUnitPulse({});
     setActiveSkill(null);
+    setActiveEnemySkill(null);
     setFloatingTexts([]);
     setBattleView(null);
     setBattleUnits([]);
+    setBattleAwaitingRoll(false);
+    setBattleRolling(false);
+    battleRollResolver.current = null;
     setRewardPulse(null);
     setInventoryPulse(false);
     setCoinPulse(false);
@@ -1828,6 +1863,18 @@ export function App() {
                     ))}
                   </div>
                   <p>{battleView.message}</p>
+                  <div className="battleCommands">
+                    <button
+                      className={`primaryButton diceButton ${battleRolling ? "rolling" : ""}`}
+                      onClick={() => void rollBattleDice()}
+                      disabled={!battleAwaitingRoll || battleRolling}
+                    >
+                      <span className="dieCube" aria-hidden="true">
+                        {battleRolling ? "?" : "D3"}
+                      </span>
+                      {battleRolling ? "..." : "サイコロを振る"}
+                    </button>
+                  </div>
                 </div>
               </>
             )}
