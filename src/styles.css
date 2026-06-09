@@ -624,7 +624,7 @@ h3 {
   padding: 10px;
   border: 1px solid #d7cfbd;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.84);
+  background: #ffffff;
   box-shadow: 0 16px 38px rgba(68, 54, 33, 0.12);
   overflow: hidden;
   animation: unit-enter 0.36s ease both;
@@ -745,12 +745,26 @@ h3 {
   gap: 6px;
   min-width: 0;
   position: relative;
+  border-radius: 8px;
+  background: #f8f6ee;
+  overflow: hidden;
+  padding: 4px;
+  margin: -4px;
+  box-shadow: inset 0 0 0 1px rgba(215, 207, 189, 0.72);
+  isolation: isolate;
+}
+
+.unitInfoSkillBoard::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  z-index: 0;
   background:
     linear-gradient(#c9c2b1, #c9c2b1) 50% 25% / 66% 3px no-repeat,
     linear-gradient(#c9c2b1, #c9c2b1) 50% 75% / 66% 3px no-repeat,
     linear-gradient(#c9c2b1, #c9c2b1) 16.666% 50% / 3px 50% no-repeat,
     linear-gradient(#c9c2b1, #c9c2b1) 83.333% 50% / 3px 50% no-repeat;
-  isolation: isolate;
+  pointer-events: none;
 }
 
 .unitInfoSkillBoard .unitInfoSkill:nth-child(4) {
