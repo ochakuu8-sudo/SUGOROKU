@@ -36,6 +36,11 @@ type Phase =
   | "gameover"
   | "clear";
 type Tone = "good" | "bad" | "neutral" | "rare";
+type DiceAnimation = {
+  label: string;
+  mode: "rolling" | "result";
+  value?: number;
+};
 
 type Stats = Record<StatKey, number>;
 type SkillEffect =
@@ -841,6 +846,7 @@ export function App() {
 
   const [banner, setBanner] = useState<string | null>(null);
   const [diceRolling, setDiceRolling] = useState(false);
+  const [diceAnimation, setDiceAnimation] = useState<DiceAnimation | null>(null);
   const [movingTrail, setMovingTrail] = useState<number[]>([]);
   const [arrivalIndex, setArrivalIndex] = useState<number | null>(null);
   const [tileEffectIndex, setTileEffectIndex] = useState<number | null>(null);
@@ -860,6 +866,7 @@ export function App() {
   const [skillPopup, setSkillPopup] = useState<Skill | null>(null);
   const [pauseView, setPauseView] = useState<PauseView | null>(null);
   const battleRollResolver = useRef<(() => void) | null>(null);
+  const battleRollValue = useRef<number | null>(null);
 
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
   const skillCatalog = useMemo(() => [normalAttack, ...skillPool], []);
@@ -932,16 +939,19 @@ export function App() {
 
     setPhase("animating");
     setDiceRolling(true);
+    setDiceAnimation({ label: "育成ダイス", mode: "rolling" });
     setBanner("サイコロを振る");
     await wait(480);
 
     const roll = fixedRoll ?? Math.ceil(Math.random() * 3);
     setFixedRoll(null);
     setLastRoll(roll);
-    setDiceRolling(false);
+    setDiceAnimation({ label: "育成ダイス", mode: "result", value: roll });
     setBanner(`${roll}マス進む`);
     addFloatingText("tile", String(position), `${roll}`, "neutral");
     await wait(420);
+    setDiceRolling(false);
+    setDiceAnimation(null);
 
     const trail: number[] = [];
     let currentPosition = position;
@@ -1081,7 +1091,8 @@ export function App() {
     await finishTurn(nextUnits);
   }
 
-  function waitForBattleRoll() {
+  function waitForBattleRoll(roll: number) {
+    battleRollValue.current = roll;
     setBattleAwaitingRoll(true);
     setBattleRolling(false);
     setBattleView((current) => current && { ...current, message: "サイコロを振ってください", tone: "neutral" });
@@ -1093,10 +1104,15 @@ export function App() {
   async function rollBattleDice() {
     if (phase !== "battle" || !battleAwaitingRoll || battleRolling) return;
     setBattleRolling(true);
+    setDiceAnimation({ label: "戦闘ダイス", mode: "rolling" });
     setBattleView((current) => current && { ...current, message: "サイコロを振っています...", tone: "neutral" });
+    await wait(480);
+    setDiceAnimation({ label: "戦闘ダイス", mode: "result", value: battleRollValue.current ?? undefined });
     await wait(420);
+    setDiceAnimation(null);
     setBattleRolling(false);
     setBattleAwaitingRoll(false);
+    battleRollValue.current = null;
     const resolve = battleRollResolver.current;
     battleRollResolver.current = null;
     resolve?.();
@@ -1161,7 +1177,7 @@ export function App() {
       }
 
       if (event.type === "unit") {
-        await waitForBattleRoll();
+        await waitForBattleRoll(event.roll);
         setActiveSkill(null);
         setBattleUnits((current) =>
           current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.slotIndex } : unit)),
@@ -1269,7 +1285,9 @@ export function App() {
     await wait(battleTiming.finish);
     setBattleAwaitingRoll(false);
     setBattleRolling(false);
+    setDiceAnimation(null);
     battleRollResolver.current = null;
+    battleRollValue.current = null;
 
     if (!result.win) {
       setBattleView(null);
@@ -1296,7 +1314,9 @@ export function App() {
     setBattleUnits([]);
     setBattleAwaitingRoll(false);
     setBattleRolling(false);
+    setDiceAnimation(null);
     battleRollResolver.current = null;
+    battleRollValue.current = null;
     setBanner(null);
     setPhase("reward");
   }
@@ -1466,6 +1486,7 @@ export function App() {
     setSelectedSkillIndex(null);
     setBanner(null);
     setDiceRolling(false);
+    setDiceAnimation(null);
     setMovingTrail([]);
     setArrivalIndex(null);
     setTileEffectIndex(null);
@@ -1479,6 +1500,7 @@ export function App() {
     setBattleAwaitingRoll(false);
     setBattleRolling(false);
     battleRollResolver.current = null;
+    battleRollValue.current = null;
     setRewardPulse(null);
     setInventoryPulse(false);
     setCoinPulse(false);
@@ -1567,6 +1589,19 @@ export function App() {
   return (
     <main className={`app ${locked ? "locked" : ""}`}>
       {banner && <div className="bannerPulse">{banner}</div>}
+      {diceAnimation && (
+        <div className={`diceAnimationLayer ${diceAnimation.mode}`} aria-live="polite">
+          <div className="diceAnimationCard">
+            <span>{diceAnimation.label}</span>
+            <div className="bigDie" aria-hidden="true">
+              <i>{diceAnimation.mode === "result" ? diceAnimation.value ?? "?" : 1}</i>
+              <i>{diceAnimation.mode === "result" ? diceAnimation.value ?? "?" : 2}</i>
+              <i>{diceAnimation.mode === "result" ? diceAnimation.value ?? "?" : 3}</i>
+            </div>
+            <strong>{diceAnimation.mode === "result" ? diceAnimation.value ?? "?" : "D3"}</strong>
+          </div>
+        </div>
+      )}
       <section className="topbar">
         <div>
           <h1>育成すごろくRPG</h1>
