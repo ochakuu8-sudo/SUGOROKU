@@ -15,18 +15,14 @@ import {
   Sparkles,
   Swords,
   Trash2,
-  Zap,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
-type StatKey = "vitality" | "power" | "agility";
-type TileType = "empty" | "training" | "item" | "treasure" | "skill" | "shop" | "inn";
-type Scope = "single" | "all";
+type TileType = "empty" | "item" | "treasure" | "skill" | "shop" | "inn";
 type PauseView = "menu" | "skills";
 type Phase =
   | "explore"
   | "animating"
-  | "chooseTraining"
   | "chooseTile"
   | "battle"
   | "reward"
@@ -42,7 +38,6 @@ type DiceAnimation = {
   value?: number;
 };
 
-type Stats = Record<StatKey, number>;
 type SkillEffect =
   | "attack"
   | "heavySlash"
@@ -66,8 +61,6 @@ type Tile = {
   name: string;
   type: TileType;
   level: number;
-  stat?: StatKey;
-  scope?: Scope;
   rare?: boolean;
 };
 
@@ -75,8 +68,8 @@ type Unit = {
   id: string;
   name: string;
   job: string;
-  stats: Stats;
   hp: number;
+  maxHp: number;
   skillBoard: Skill[];
   boardIndex: number;
 };
@@ -200,17 +193,11 @@ type BattleView = {
   tone: Tone;
 };
 
-const statLabels: Record<StatKey, string> = {
-  vitality: "体力",
-  power: "威力",
-  agility: "機敏",
-};
-
 const normalAttack: Skill = {
   id: "normal",
   name: "通常攻撃",
   effect: "attack",
-  description: "敵1体に威力分のダメージ。",
+  description: "敵1体に5ダメージ。",
 };
 
 const skillPool: Skill[] = [
@@ -218,44 +205,44 @@ const skillPool: Skill[] = [
     id: "heavy-slash",
     name: "強打",
     effect: "heavySlash",
-    description: "敵1体に威力+2ダメージ。",
+    description: "敵1体に8ダメージ。",
   },
   {
     id: "guard",
     name: "ガード",
     effect: "guard",
-    description: "自分に体力分の一時HPを付与。",
+    description: "自分に一時HP8を付与。",
   },
   {
     id: "quick-stab",
     name: "早駆け",
     effect: "quickStab",
-    description: "敵1体に機敏+1ダメージ。",
+    description: "敵1体に6ダメージ。",
   },
   {
     id: "heal",
     name: "応急手当",
     effect: "heal",
-    description: "最もHP割合が低い味方を体力+2回復。",
+    description: "最もHP割合が低い味方を10回復。",
   },
   {
     id: "firebolt",
     name: "火球",
     effect: "firebolt",
     cost: 2,
-    description: "マナ2相当。敵1体に威力+5ダメージ。",
+    description: "マナ2消費。敵1体に12ダメージ。",
   },
   {
     id: "rally",
     name: "号令",
     effect: "rally",
-    description: "味方全員を威力分回復。",
+    description: "味方全員を6回復。",
   },
   {
     id: "spirit-slash",
     name: "気合い斬り",
     effect: "spiritSlash",
-    description: "威力分のダメージ。2回止まると自分のHPを50%回復。",
+    description: "敵1体に6ダメージ。2回止まると自分のHPを50%回復。",
   },
   {
     id: "poison-breath",
@@ -340,28 +327,28 @@ const recruitPool: Omit<Unit, "hp" | "boardIndex">[] = [
     id: "mage",
     name: "リナ",
     job: "魔導士",
-    stats: { vitality: 7, power: 7, agility: 4 },
+    maxHp: 42,
     skillBoard: [normalAttack, skillPool[4], normalAttack, skillPool[2]],
   },
   {
     id: "knight",
     name: "ガレス",
     job: "騎士",
-    stats: { vitality: 12, power: 4, agility: 2 },
+    maxHp: 60,
     skillBoard: [normalAttack, skillPool[1], normalAttack, skillPool[3]],
   },
   {
     id: "thief",
     name: "ミラ",
     job: "盗賊",
-    stats: { vitality: 8, power: 5, agility: 8 },
+    maxHp: 46,
     skillBoard: [normalAttack, skillPool[2], normalAttack, skillPool[0]],
   },
   {
     id: "priest",
     name: "ノア",
     job: "祈祷師",
-    stats: { vitality: 9, power: 4, agility: 5 },
+    maxHp: 50,
     skillBoard: [normalAttack, skillPool[3], normalAttack, skillPool[5]],
   },
 ];
@@ -383,8 +370,8 @@ const initialHero: Unit = {
   id: "hero",
   name: "アレン",
   job: "勇者",
-  stats: { vitality: 10, power: 5, agility: 5 },
   hp: 50,
+  maxHp: 50,
   boardIndex: 0,
   skillBoard: [normalAttack, normalAttack, normalAttack, normalAttack, normalAttack, normalAttack],
 };
@@ -402,6 +389,17 @@ const battleTiming = {
   finish: 1000,
 };
 
+const skillValues = {
+  attack: 5,
+  heavySlash: 8,
+  guard: 8,
+  quickStab: 6,
+  heal: 10,
+  firebolt: 12,
+  rally: 6,
+  spiritSlash: 6,
+};
+
 function createId(prefix: string) {
   idCounter += 1;
   return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}-${Math.random()
@@ -416,7 +414,7 @@ function wait(ms: number) {
 }
 
 function maxHp(unit: Unit) {
-  return unit.stats.vitality * 5;
+  return unit.maxHp;
 }
 
 function makeEnemy(battleCount: number): EnemyCombatant {
@@ -441,33 +439,18 @@ function cloneTile(tile: Tile): Tile {
   return { ...tile, id: createId(tile.id) };
 }
 
-function makeTrainingTile(stat: StatKey, scope: Scope, rare = false): Tile {
-  return {
-    id: createId(`${scope}-${stat}`),
-    name: `${scope === "all" ? "全体" : ""}${statLabels[stat]}訓練`,
-    type: "training",
-    stat,
-    scope,
-    level: 1,
-    rare,
-  };
-}
-
 function randomFrom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
 function tileChoicePool(): Tile[] {
   return [
-    makeTrainingTile("vitality", "single"),
-    makeTrainingTile("power", "single"),
-    makeTrainingTile("agility", "single"),
-    makeTrainingTile("vitality", "all", true),
-    makeTrainingTile("power", "all", true),
-    makeTrainingTile("agility", "all", true),
     cloneTile({ id: "item-reward", name: "アイテム", type: "item", level: 1 }),
-    cloneTile({ id: "skill-reward", name: "戦闘訓練", type: "skill", level: 1 }),
+    cloneTile({ id: "skill-reward", name: "スキル訓練", type: "skill", level: 1 }),
+    cloneTile({ id: "skill-reward-plus", name: "技のひらめき", type: "skill", level: 1, rare: true }),
     cloneTile({ id: "treasure-reward", name: "宝箱", type: "treasure", level: 1, rare: true }),
+    cloneTile({ id: "shop", name: "SHOP", type: "shop", level: 1 }),
+    cloneTile({ id: "inn", name: "宿屋", type: "inn", level: 1 }),
   ];
 }
 
@@ -491,8 +474,6 @@ function uniqueRewards(count: number): Reward[] {
 
 function tileIcon(type: TileType) {
   switch (type) {
-    case "training":
-      return <Zap size={18} />;
     case "item":
       return <PackagePlus size={18} />;
     case "treasure":
@@ -509,10 +490,6 @@ function tileIcon(type: TileType) {
 }
 
 function getTileDescription(tile: Tile) {
-  if (tile.type === "training" && tile.stat && tile.scope) {
-    const amount = tile.scope === "all" ? tile.level : tile.level + 1;
-    return `${tile.scope === "all" ? "全員" : "1体選択"}の${statLabels[tile.stat]}+${amount}`;
-  }
   if (tile.type === "item") return "アイテムを1つ入手。最大3個。";
   if (tile.type === "treasure") return "レアマスを入手。このマスは空きになる。";
   if (tile.type === "skill") return "スキルを1つ入手。準備フェーズで装備。";
@@ -633,18 +610,18 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
   function resolveUnitSkill(unit: BattleUnit, skill: Skill, slotIndex: number, roll: number, chainDepth = 0) {
     switch (skill.effect) {
       case "guard": {
-        unit.tempHp += unit.stats.vitality;
-        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。一時HP+${unit.stats.vitality}。`, "good", "self", unit.stats.vitality);
+        unit.tempHp += skillValues.guard;
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。一時HP+${skillValues.guard}。`, "good", "self", skillValues.guard);
         return;
       }
       case "quickStab": {
-        const { damage, focused } = damageEnemy(unit, unit.stats.agility + 1);
+        const { damage, focused } = damageEnemy(unit, skillValues.quickStab);
         unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
         return;
       }
       case "heal": {
         const target = fighters.filter((u) => u.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
-        const amount = unit.stats.vitality + 2;
+        const amount = skillValues.heal;
         target.hp = Math.min(maxHp(target), target.hp + amount);
         unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${target.name}を${amount}回復。`, "good", "ally", amount, target.id);
         return;
@@ -654,24 +631,24 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
           unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。マナ不足。`, "neutral", "none");
           return;
         }
-        const { damage, focused } = damageEnemy(unit, unit.stats.power + 5);
+        const { damage, focused } = damageEnemy(unit, skillValues.firebolt);
         unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
         return;
       }
       case "rally": {
         fighters.forEach((target) => {
-          if (target.hp > 0) target.hp = Math.min(maxHp(target), target.hp + unit.stats.power);
+          if (target.hp > 0) target.hp = Math.min(maxHp(target), target.hp + skillValues.rally);
         });
-        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。味方全員を${unit.stats.power}回復。`, "good", "party", unit.stats.power);
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。味方全員を${skillValues.rally}回復。`, "good", "party", skillValues.rally);
         return;
       }
       case "heavySlash": {
-        const { damage, focused } = damageEnemy(unit, unit.stats.power + 2);
+        const { damage, focused } = damageEnemy(unit, skillValues.heavySlash);
         unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
         return;
       }
       case "spiritSlash": {
-        const { damage, focused } = damageEnemy(unit, unit.stats.power);
+        const { damage, focused } = damageEnemy(unit, skillValues.spiritSlash);
         unit.charges[skill.id] = (unit.charges[skill.id] ?? 0) + 1;
         if (unit.charges[skill.id] >= 2) {
           unit.charges[skill.id] = 0;
@@ -740,7 +717,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
       }
       case "attack":
       default: {
-        const { damage, focused } = damageEnemy(unit, unit.stats.power);
+        const { damage, focused } = damageEnemy(unit, skillValues.attack);
         unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
       }
     }
@@ -755,7 +732,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
     if (enemy.hp <= 0 || fighters.every((unit) => unit.hp <= 0)) break;
 
     const actors = [
-      ...fighters.filter((unit) => unit.hp > 0).map((unit) => ({ type: "unit" as const, agility: unit.stats.agility, unit })),
+      ...fighters.filter((unit) => unit.hp > 0).map((unit) => ({ type: "unit" as const, agility: 10, unit })),
       { type: "enemy" as const, agility: enemy.agility, unit: null },
     ].sort((a, b) => b.agility - a.agility);
 
@@ -884,7 +861,6 @@ export function App() {
   const [prepEndsTurn, setPrepEndsTurn] = useState(false);
   const [lastRoll, setLastRoll] = useState<number | null>(null);
   const [fixedRoll, setFixedRoll] = useState<number | null>(null);
-  const [pendingTraining, setPendingTraining] = useState<{ stat: StatKey; amount: number } | null>(null);
   const [pendingTileIndex, setPendingTileIndex] = useState<number | null>(null);
   const [pendingTileChoices, setPendingTileChoices] = useState<Tile[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -1064,30 +1040,6 @@ export function App() {
       return;
     }
 
-    if (tile.type === "training" && tile.stat && tile.scope) {
-      const amount = tile.scope === "all" ? tile.level : tile.level + 1;
-      if (tile.scope === "all") {
-        const nextUnits = units.map((unit) => ({
-          ...unit,
-          stats: { ...unit.stats, [tile.stat!]: unit.stats[tile.stat!] + amount },
-          hp: tile.stat === "vitality" ? unit.hp + amount * 5 : unit.hp,
-        }));
-        setUnits(nextUnits);
-        setBanner(`全員の${statLabels[tile.stat]}+${amount}`);
-        pushLog(`全員の${statLabels[tile.stat]}+${amount}。`);
-        for (const unit of nextUnits) {
-          void flashUnit(unit.id, "good", `+${amount}`);
-        }
-        await wait(520);
-        await finishTurn(nextUnits);
-      } else {
-        setPendingTraining({ stat: tile.stat, amount });
-        setBanner(null);
-        setPhase("chooseTraining");
-      }
-      return;
-    }
-
     if (tile.type === "item") {
       const item = randomFrom(itemPool);
       if (items.length >= 3) {
@@ -1104,7 +1056,7 @@ export function App() {
     }
 
     if (tile.type === "treasure") {
-      const rareTile = makeTrainingTile(randomFrom(["vitality", "power", "agility"] as StatKey[]), "all", true);
+      const rareTile = cloneTile({ id: "rare-skill", name: "レアスキル訓練", type: "skill", level: tile.level + 1, rare: true });
       setTileInventory((current) => [...current, rareTile].slice(0, 5));
       setBoard((current) => current.map((entry, index) => (index === tileIndex ? emptyTile(createId("empty")) : entry)));
       pushLog(`宝箱を消費して「${rareTile.name}」を入手。`);
@@ -1149,26 +1101,6 @@ export function App() {
         await finishTurn();
       }
     }
-  }
-
-  async function applyTraining(unitId: string) {
-    if (!pendingTraining || locked) return;
-    const { stat, amount } = pendingTraining;
-    const nextUnits = units.map((unit) => {
-      if (unit.id !== unitId) return unit;
-      return {
-        ...unit,
-        stats: { ...unit.stats, [stat]: unit.stats[stat] + amount },
-        hp: stat === "vitality" ? unit.hp + amount * 5 : unit.hp,
-      };
-    });
-    setUnits(nextUnits);
-    setPendingTraining(null);
-    setPhase("animating");
-    const target = units.find((unit) => unit.id === unitId);
-    pushLog(`${target?.name}の${statLabels[stat]}+${amount}。`);
-    await flashUnit(unitId, "good", `${statLabels[stat]}+${amount}`);
-    await finishTurn(nextUnits);
   }
 
   function waitForBattleRoll(roll: number) {
@@ -1453,7 +1385,7 @@ export function App() {
 
   async function recruit(candidate: Omit<Unit, "hp" | "boardIndex">) {
     if (locked) return;
-    const newUnit: Unit = { ...candidate, hp: candidate.stats.vitality * 5, boardIndex: 0 };
+    const newUnit: Unit = { ...candidate, hp: candidate.maxHp, boardIndex: 0 };
     setUnits((current) => [...current, newUnit]);
     pushLog(`${candidate.name}が仲間になった。`);
     setPrepEndsTurn(false);
@@ -1568,7 +1500,6 @@ export function App() {
     setPrepEndsTurn(false);
     setLastRoll(null);
     setFixedRoll(null);
-    setPendingTraining(null);
     setPendingTileIndex(null);
     setPendingTileChoices([]);
     setRewards([]);
@@ -1643,11 +1574,6 @@ export function App() {
             <i style={{ width: `${Math.max(0, Math.min(100, (unit.hp / maxHp(unit)) * 100))}%` }} />
           </div>
         )}
-        <div className="unitInfoStats">
-          <span>体 {unit.stats.vitality}</span>
-          <span>威 {unit.stats.power}</span>
-          <span>敏 {unit.stats.agility}</span>
-        </div>
         <div className="unitInfoSkillBoard">
           {unit.skillBoard.map((skill, index) => {
             const firing = activeSkill?.unitId === unit.id && activeSkill.slotIndex === index;
@@ -1841,7 +1767,6 @@ export function App() {
 
       {(pauseView ||
         showLog ||
-        phase === "chooseTraining" ||
         phase === "chooseTile" ||
         phase === "battle" ||
         phase === "reward" ||
@@ -1907,32 +1832,6 @@ export function App() {
                     </li>
                   ))}
                 </ol>
-              </>
-            )}
-
-            {!showLog && phase === "chooseTraining" && pendingTraining && (
-              <>
-                <h2>{statLabels[pendingTraining.stat]}訓練</h2>
-                <p>強化するユニットを選択。</p>
-                <div className="unitPanelGrid">
-                  {units.map((unit) => (
-                    <div
-                      key={unit.id}
-                      className="unitChoiceCard"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => void applyTraining(unit.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") void applyTraining(unit.id);
-                      }}
-                    >
-                      {renderUnitPanel(unit, { className: "selectable", showHp: true })}
-                      <span className="unitChoiceBadge">
-                        {statLabels[pendingTraining.stat]} +{pendingTraining.amount}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </>
             )}
 
@@ -2048,9 +1947,7 @@ export function App() {
                     <button key={candidate.id} className="choiceButton rewardCard" onClick={() => void recruit(candidate)}>
                       <strong>{candidate.name}</strong>
                       <span>{candidate.job}</span>
-                      <small>
-                        体力{candidate.stats.vitality} 威力{candidate.stats.power} 機敏{candidate.stats.agility}
-                      </small>
+                      <small>最大HP{candidate.maxHp}</small>
                     </button>
                   ))}
                 </div>
