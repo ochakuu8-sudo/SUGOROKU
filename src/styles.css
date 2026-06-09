@@ -537,6 +537,10 @@ h3 {
   background: #eef7ef;
 }
 
+.tile.battle {
+  background: #ffe9e6;
+}
+
 .tile.item {
   background: #ecf4fb;
 }

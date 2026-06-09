@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
-type TileType = "empty" | "item" | "treasure" | "skill" | "shop" | "inn";
+type TileType = "empty" | "battle" | "item" | "treasure" | "skill" | "shop" | "inn";
 type PauseView = "menu" | "skills";
 type Phase =
   | "explore"
@@ -104,6 +104,7 @@ type EnemySkill = {
   name: string;
   description: string;
   effect: "strike" | "heavy" | "cleave" | "recover";
+  rewardSkill: Skill;
 };
 
 type EnemyCombatant = {
@@ -308,24 +309,28 @@ const enemySkillPool: Record<string, EnemySkill> = {
     name: "爪撃",
     effect: "strike",
     description: "最も弱っている味方1体へ通常ダメージ。",
+    rewardSkill: skillPool[2],
   },
   heavy: {
     id: "enemy-heavy",
     name: "強打",
     effect: "heavy",
     description: "最も弱っている味方1体へ大ダメージ。",
+    rewardSkill: skillPool[0],
   },
   cleave: {
     id: "enemy-cleave",
     name: "なぎ払い",
     effect: "cleave",
     description: "味方全員へ小ダメージ。",
+    rewardSkill: skillPool[5],
   },
   recover: {
     id: "enemy-recover",
     name: "再生",
     effect: "recover",
     description: "敵自身のHPを少し回復。",
+    rewardSkill: skillPool[3],
   },
 };
 
@@ -370,8 +375,9 @@ const itemPool: Item[] = [
 ];
 
 const emptyTile = (id: string): Tile => ({ id, name: "空き", type: "empty", level: 1 });
+const battleTile = (id: string): Tile => ({ id, name: "戦闘", type: "battle", level: 1 });
 
-const initialBoard: Tile[] = Array.from({ length: 10 }, (_, index) => emptyTile(`empty-${index + 1}`));
+const initialBoard: Tile[] = Array.from({ length: 10 }, (_, index) => battleTile(`battle-${index + 1}`));
 
 const initialHero: Unit = {
   id: "hero",
@@ -432,6 +438,7 @@ function maxHp(unit: Unit) {
 function makeEnemy(battleCount: number): EnemyCombatant {
   const isBoss = battleCount === 10;
   const isMidBoss = battleCount % 3 === 0;
+  const enemySkills = Object.values(enemySkillPool);
   return {
     name: isBoss ? "最終ボス" : isMidBoss ? "中ボス" : "魔物",
     hp: 28 + battleCount * 12,
@@ -439,11 +446,7 @@ function makeEnemy(battleCount: number): EnemyCombatant {
     power: 4 + battleCount * 2,
     agility: 3 + battleCount,
     boardIndex: 0,
-    skillBoard: isBoss
-      ? [enemySkillPool.heavy, enemySkillPool.cleave, enemySkillPool.recover, enemySkillPool.heavy]
-      : isMidBoss
-        ? [enemySkillPool.strike, enemySkillPool.heavy, enemySkillPool.cleave, enemySkillPool.strike]
-        : [enemySkillPool.strike, enemySkillPool.strike, enemySkillPool.heavy, enemySkillPool.strike],
+    skillBoard: Array.from({ length: isBoss ? 6 : isMidBoss ? 5 : 4 }, () => randomFrom(enemySkills)),
   };
 }
 
@@ -486,6 +489,8 @@ function uniqueRewards(count: number): Reward[] {
 
 function tileIcon(type: TileType) {
   switch (type) {
+    case "battle":
+      return <Swords size={18} />;
     case "item":
       return <PackagePlus size={18} />;
     case "treasure":
@@ -502,6 +507,7 @@ function tileIcon(type: TileType) {
 }
 
 function getTileDescription(tile: Tile) {
+  if (tile.type === "battle") return "敵と戦う。勝利すると敵のスキルから1つ入手。";
   if (tile.type === "item") return "アイテムを1つ入手。最大3個。";
   if (tile.type === "treasure") return "レアマスを入手。このマスは空きになる。";
   if (tile.type === "skill") return "スキルを1つ入手。準備フェーズで装備。";
@@ -1044,12 +1050,8 @@ export function App() {
   async function finishTurn(nextUnits = units) {
     const nextTurn = turn + 1;
     setTurn(nextTurn);
+    void nextUnits;
     await wait(180);
-
-    if (nextTurn % 5 === 0) {
-      await startBattle(nextUnits);
-      return;
-    }
 
     setPhase("explore");
     setBanner(null);
@@ -1098,6 +1100,11 @@ export function App() {
       setPendingTileChoices(tileChoices(3));
       setBanner(null);
       setPhase("chooseTile");
+      return;
+    }
+
+    if (tile.type === "battle") {
+      await startBattle(units);
       return;
     }
 
@@ -1700,8 +1707,10 @@ export function App() {
     }
 
     setBattleCount(nextBattle);
-    setCoins((value) => value + 8 + nextBattle);
-    await flashCoins(`+${8 + nextBattle}`);
+    const lootSkill = randomFrom(enemy.skillBoard).rewardSkill;
+    setSkillInventory((current) => [...current, lootSkill].slice(0, 6));
+    pushLog(`敵のスキル「${lootSkill.name}」を入手。`);
+    await flashInventory(lootSkill.name);
 
     if (nextBattle >= 10) {
       setBattleView(null);
@@ -1711,7 +1720,6 @@ export function App() {
       return;
     }
 
-    setRewards(uniqueRewards(3));
     setBattleView(null);
     setBattleUnits([]);
     setBattleAwaitingRoll(false);
@@ -1721,7 +1729,8 @@ export function App() {
     battleRollResolver.current = null;
     battleRollValue.current = null;
     setBanner(null);
-    setPhase("reward");
+    setPrepEndsTurn(false);
+    setPhase("prep");
   }
 
   async function chooseTileEffect(tile: Tile, index: number) {
@@ -2069,7 +2078,7 @@ export function App() {
 
           <div className="runControls">
             <span>直近出目: {lastRoll ?? "-"}</span>
-            <span>次の戦闘まで: {5 - (turn % 5)}ターン</span>
+            <span>戦闘マス: 勝利で敵スキル入手</span>
             <button onClick={() => setPauseView("menu")} className="ghostButton" disabled={locked}>
               <Pause size={16} />
               一時停止
