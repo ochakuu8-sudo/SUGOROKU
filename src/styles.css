@@ -240,7 +240,6 @@ h3 {
   position: relative;
   width: 70px;
   height: 70px;
-  transform-style: preserve-3d;
   border: 2px solid rgba(31, 87, 93, 0.22);
   border-radius: 14px;
   background:
@@ -249,11 +248,14 @@ h3 {
   box-shadow:
     inset -7px -8px 0 rgba(31, 87, 93, 0.09),
     0 12px 22px rgba(31, 87, 93, 0.22);
-  animation: big-dice-roll 0.48s linear infinite;
+}
+
+.diceAnimationLayer.rolling .bigDie {
+  animation: roulette-dice-tick 0.14s ease-in-out infinite alternate;
 }
 
 .diceAnimationLayer.result .bigDie {
-  animation: big-dice-land 0.32s cubic-bezier(0.2, 1.35, 0.35, 1) both;
+  animation: roulette-dice-land 0.26s cubic-bezier(0.2, 1.35, 0.35, 1) both;
 }
 
 .bigDie i {
@@ -268,20 +270,8 @@ h3 {
   line-height: 1;
 }
 
-.diceAnimationLayer.rolling .bigDie i:nth-child(1) {
-  animation: dice-face-1 0.48s steps(1, end) infinite;
-}
-
-.diceAnimationLayer.rolling .bigDie i:nth-child(2) {
-  animation: dice-face-2 0.48s steps(1, end) infinite;
-}
-
-.diceAnimationLayer.rolling .bigDie i:nth-child(3) {
-  animation: dice-face-3 0.48s steps(1, end) infinite;
-}
-
-.diceAnimationLayer.result .bigDie i:not(:first-child) {
-  display: none;
+.diceAnimationLayer.rolling .bigDie i {
+  animation: roulette-number-flash 0.14s ease-in-out infinite alternate;
 }
 
 .ghostButton {
@@ -2096,67 +2086,34 @@ h3 {
   }
 }
 
-@keyframes big-dice-roll {
+@keyframes roulette-dice-tick {
   0% {
-    transform: rotate(0deg) translateY(0) scale(1);
-  }
-  25% {
-    transform: rotate(92deg) translateY(-8px) scale(1.04);
-  }
-  50% {
-    transform: rotate(184deg) translateY(0) scale(0.98);
-  }
-  75% {
-    transform: rotate(276deg) translateY(-6px) scale(1.05);
+    transform: translateY(0) scale(1);
   }
   100% {
-    transform: rotate(360deg) translateY(0) scale(1);
+    transform: translateY(-3px) scale(1.04);
   }
 }
 
-@keyframes big-dice-land {
+@keyframes roulette-dice-land {
   0% {
-    transform: rotate(-18deg) scale(0.9);
+    transform: scale(0.92);
   }
   65% {
-    transform: rotate(7deg) scale(1.12);
+    transform: scale(1.12);
   }
   100% {
-    transform: rotate(0deg) scale(1);
+    transform: scale(1);
   }
 }
 
-@keyframes dice-face-1 {
-  0%,
-  32% {
-    opacity: 1;
+@keyframes roulette-number-flash {
+  0% {
+    transform: translateY(1px) scale(0.96);
+    opacity: 0.65;
   }
-  33%,
   100% {
-    opacity: 0;
-  }
-}
-
-@keyframes dice-face-2 {
-  0%,
-  32%,
-  66%,
-  100% {
-    opacity: 0;
-  }
-  33%,
-  65% {
-    opacity: 1;
-  }
-}
-
-@keyframes dice-face-3 {
-  0%,
-  65% {
-    opacity: 0;
-  }
-  66%,
-  100% {
+    transform: translateY(0) scale(1.04);
     opacity: 1;
   }
 }

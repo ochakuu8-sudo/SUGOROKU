@@ -867,6 +867,7 @@ export function App() {
   const [pauseView, setPauseView] = useState<PauseView | null>(null);
   const battleRollResolver = useRef<(() => void) | null>(null);
   const battleRollValue = useRef<number | null>(null);
+  const diceRouletteTimer = useRef<number | null>(null);
 
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
   const skillCatalog = useMemo(() => [normalAttack, ...skillPool], []);
@@ -920,6 +921,30 @@ export function App() {
     setUnits((current) => current.map((unit) => (unit.id === id ? updater(unit) : unit)));
   }
 
+  function randomDiceValue() {
+    return Math.ceil(Math.random() * 3);
+  }
+
+  function stopDiceRoulette() {
+    if (diceRouletteTimer.current !== null) {
+      window.clearInterval(diceRouletteTimer.current);
+      diceRouletteTimer.current = null;
+    }
+  }
+
+  async function playDiceAnimation(label: string, result: number) {
+    stopDiceRoulette();
+    setDiceAnimation({ label, mode: "rolling", value: randomDiceValue() });
+    diceRouletteTimer.current = window.setInterval(() => {
+      setDiceAnimation((current) => (current?.mode === "rolling" ? { ...current, value: randomDiceValue() } : current));
+    }, 70);
+    await wait(620);
+    stopDiceRoulette();
+    setDiceAnimation({ label, mode: "result", value: result });
+    await wait(420);
+    setDiceAnimation(null);
+  }
+
   async function finishTurn(nextUnits = units) {
     const nextTurn = turn + 1;
     setTurn(nextTurn);
@@ -939,19 +964,15 @@ export function App() {
 
     setPhase("animating");
     setDiceRolling(true);
-    setDiceAnimation({ label: "育成ダイス", mode: "rolling" });
     setBanner("サイコロを振る");
-    await wait(480);
 
-    const roll = fixedRoll ?? Math.ceil(Math.random() * 3);
+    const roll = fixedRoll ?? randomDiceValue();
+    await playDiceAnimation("育成ダイス", roll);
     setFixedRoll(null);
     setLastRoll(roll);
-    setDiceAnimation({ label: "育成ダイス", mode: "result", value: roll });
     setBanner(`${roll}マス進む`);
     addFloatingText("tile", String(position), `${roll}`, "neutral");
-    await wait(420);
     setDiceRolling(false);
-    setDiceAnimation(null);
 
     const trail: number[] = [];
     let currentPosition = position;
@@ -1104,12 +1125,8 @@ export function App() {
   async function rollBattleDice() {
     if (phase !== "battle" || !battleAwaitingRoll || battleRolling) return;
     setBattleRolling(true);
-    setDiceAnimation({ label: "戦闘ダイス", mode: "rolling" });
     setBattleView((current) => current && { ...current, message: "サイコロを振っています...", tone: "neutral" });
-    await wait(480);
-    setDiceAnimation({ label: "戦闘ダイス", mode: "result", value: battleRollValue.current ?? undefined });
-    await wait(420);
-    setDiceAnimation(null);
+    await playDiceAnimation("戦闘ダイス", battleRollValue.current ?? randomDiceValue());
     setBattleRolling(false);
     setBattleAwaitingRoll(false);
     battleRollValue.current = null;
@@ -1285,6 +1302,7 @@ export function App() {
     await wait(battleTiming.finish);
     setBattleAwaitingRoll(false);
     setBattleRolling(false);
+    stopDiceRoulette();
     setDiceAnimation(null);
     battleRollResolver.current = null;
     battleRollValue.current = null;
@@ -1314,6 +1332,7 @@ export function App() {
     setBattleUnits([]);
     setBattleAwaitingRoll(false);
     setBattleRolling(false);
+    stopDiceRoulette();
     setDiceAnimation(null);
     battleRollResolver.current = null;
     battleRollValue.current = null;
@@ -1486,6 +1505,7 @@ export function App() {
     setSelectedSkillIndex(null);
     setBanner(null);
     setDiceRolling(false);
+    stopDiceRoulette();
     setDiceAnimation(null);
     setMovingTrail([]);
     setArrivalIndex(null);
@@ -1594,11 +1614,9 @@ export function App() {
           <div className="diceAnimationCard">
             <span>{diceAnimation.label}</span>
             <div className="bigDie" aria-hidden="true">
-              <i>{diceAnimation.mode === "result" ? diceAnimation.value ?? "?" : 1}</i>
-              <i>{diceAnimation.mode === "result" ? diceAnimation.value ?? "?" : 2}</i>
-              <i>{diceAnimation.mode === "result" ? diceAnimation.value ?? "?" : 3}</i>
+              <i>{diceAnimation.value ?? "?"}</i>
             </div>
-            <strong>{diceAnimation.mode === "result" ? diceAnimation.value ?? "?" : "D3"}</strong>
+            <strong>{diceAnimation.mode === "result" ? "決定" : "抽選中"}</strong>
           </div>
         </div>
       )}
