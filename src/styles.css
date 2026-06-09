@@ -283,12 +283,16 @@ h3 {
 
 .primaryButton:disabled,
 .ghostButton:disabled,
-.tile:disabled,
 .skillSlot:disabled,
 .inventoryButton:disabled,
 .choiceButton:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.tile:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 .boardGrid {
