@@ -514,6 +514,47 @@ function rollGameDie(die: GameDie) {
   return die.faces[Math.floor(Math.random() * die.faces.length)];
 }
 
+function dieDisplayName(die: GameDie) {
+  return die.name.replace("サイコロ", "");
+}
+
+function DiceSelector({
+  dice,
+  selectedId,
+  onSelect,
+  disabled,
+  compact = false,
+  label,
+}: {
+  dice: GameDie[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  disabled?: boolean;
+  compact?: boolean;
+  label: string;
+}) {
+  return (
+    <div className={`diceSelector ${compact ? "compact" : ""}`} aria-label={label}>
+      {dice.map((die) => (
+        <button
+          key={`${label}-${die.id}`}
+          type="button"
+          className={selectedId === die.id ? "selected" : ""}
+          onClick={() => onSelect(die.id)}
+          disabled={disabled}
+        >
+          <strong>{dieDisplayName(die)}</strong>
+          <span className="diceFaces">
+            {die.faces.map((face, index) => (
+              <i key={`${die.id}-${face}-${index}`}>{face}</i>
+            ))}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function runBattle(units: Unit[], battleCount: number, battleItems: Item[], battleDie: GameDie): BattleResult {
   const fighters: BattleUnit[] = units.map((unit) => ({
     ...unit,
@@ -1672,20 +1713,13 @@ export function App() {
           <div className="boardHeader">
             <h2>共通盤面</h2>
             <div className="diceControlGroup">
-              <div className="diceSelect" aria-label="育成サイコロ">
-                {ownedDice.map((die) => (
-                  <button
-                    key={`explore-die-${die.id}`}
-                    type="button"
-                    className={selectedExploreDieId === die.id ? "selected" : ""}
-                    onClick={() => setSelectedExploreDieId(die.id)}
-                    disabled={phase !== "explore" || locked}
-                  >
-                    <strong>{die.name}</strong>
-                    <span>{die.label}</span>
-                  </button>
-                ))}
-              </div>
+              <DiceSelector
+                dice={ownedDice}
+                selectedId={selectedExploreDieId}
+                onSelect={setSelectedExploreDieId}
+                disabled={phase !== "explore" || locked}
+                label="育成サイコロ"
+              />
               <button className={`primaryButton diceButton ${diceRolling ? "rolling" : ""}`} onClick={() => void rollDice()} disabled={phase !== "explore" || locked}>
                 <span className="dieCube" aria-hidden="true">
                   {diceRolling ? "?" : fixedRoll ?? lastRoll ?? selectedExploreDie.label}
@@ -1728,20 +1762,14 @@ export function App() {
             <span>直近出目: {lastRoll ?? "-"}</span>
             <div className="inlineDiceControl">
               <span>戦闘サイコロ</span>
-              <div className="diceSelect compact" aria-label="戦闘サイコロ">
-                {ownedDice.map((die) => (
-                  <button
-                    key={`next-battle-die-${die.id}`}
-                    type="button"
-                    className={selectedBattleDieId === die.id ? "selected" : ""}
-                    onClick={() => setSelectedBattleDieId(die.id)}
-                    disabled={locked}
-                  >
-                    <strong>{die.name}</strong>
-                    <span>{die.label}</span>
-                  </button>
-                ))}
-              </div>
+              <DiceSelector
+                dice={ownedDice}
+                selectedId={selectedBattleDieId}
+                onSelect={setSelectedBattleDieId}
+                disabled={locked}
+                compact
+                label="戦闘サイコロ"
+              />
             </div>
             <span>次の戦闘まで: {5 - (turn % 5)}ターン</span>
             <button onClick={() => setPauseView("menu")} className="ghostButton" disabled={locked}>
@@ -1948,20 +1976,14 @@ export function App() {
                   </div>
                   <p>{battleView.message}</p>
                   <div className="battleCommands">
-                    <div className="diceSelect battleDiceSelect" aria-label="戦闘サイコロ">
-                      {ownedDice.map((die) => (
-                        <button
-                          key={`battle-die-${die.id}`}
-                          type="button"
-                          className={selectedBattleDieId === die.id ? "selected" : ""}
-                          onClick={() => setSelectedBattleDieId(die.id)}
-                          disabled={phase === "battle"}
-                        >
-                          <strong>{die.name}</strong>
-                          <span>{die.label}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <DiceSelector
+                      dice={ownedDice}
+                      selectedId={selectedBattleDieId}
+                      onSelect={setSelectedBattleDieId}
+                      disabled={phase === "battle"}
+                      compact
+                      label="戦闘サイコロ"
+                    />
                     <button
                       className={`primaryButton diceButton ${battleRolling ? "rolling" : ""}`}
                       onClick={() => void rollBattleDice()}
