@@ -997,7 +997,7 @@ export function App() {
       diceRouletteValue.current = nextValue;
       setDiceAnimation((current) => (current?.mode === "rolling" ? { ...current, value: nextValue } : current));
     }, 70);
-    await wait(1000);
+    await wait(700);
     stopDiceRoulette();
     setDiceAnimation({ label, mode: "result", value: result });
     await wait(420);
