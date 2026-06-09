@@ -920,7 +920,7 @@ export function App() {
   const battleRollValue = useRef<number | null>(null);
   const diceRouletteTimer = useRef<number | null>(null);
   const diceRouletteValue = useRef(1);
-  const diceRouletteResolver = useRef<((value: number) => void) | null>(null);
+  const diceRouletteResolver = useRef<(() => void) | null>(null);
 
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
   const skillCatalog = useMemo(() => [normalAttack, ...skillPool], []);
@@ -974,9 +974,12 @@ export function App() {
     setUnits((current) => current.map((unit) => (unit.id === id ? updater(unit) : unit)));
   }
 
-  function randomDiceValue(except?: number) {
-    const values = [1, 2, 3].filter((value) => value !== except);
-    return values[Math.floor(Math.random() * values.length)];
+  function randomDiceValue() {
+    return Math.ceil(Math.random() * 3);
+  }
+
+  function nextRouletteValue(value: number) {
+    return (value % 3) + 1;
   }
 
   function stopDiceRoulette() {
@@ -990,29 +993,27 @@ export function App() {
     const resolve = diceRouletteResolver.current;
     if (!resolve) return;
     diceRouletteResolver.current = null;
-    resolve(diceRouletteValue.current);
+    resolve();
   }
 
-  async function playDiceAnimation(label: string, forcedResult?: number) {
+  async function playDiceAnimation(label: string, result: number) {
     stopDiceRoulette();
     diceRouletteResolver.current = null;
-    diceRouletteValue.current = randomDiceValue();
+    diceRouletteValue.current = 1;
     setDiceAnimation({ label, mode: "rolling", value: diceRouletteValue.current });
     diceRouletteTimer.current = window.setInterval(() => {
-      const nextValue = randomDiceValue(diceRouletteValue.current);
+      const nextValue = nextRouletteValue(diceRouletteValue.current);
       diceRouletteValue.current = nextValue;
       setDiceAnimation((current) => (current?.mode === "rolling" ? { ...current, value: nextValue } : current));
     }, 70);
-    const stoppedValue = await new Promise<number>((resolve) => {
+    await new Promise<void>((resolve) => {
       diceRouletteResolver.current = resolve;
     });
     stopDiceRoulette();
-    const result = forcedResult ?? stoppedValue;
     setDiceAnimation({ label, mode: "result", value: result });
     await wait(420);
     setDiceAnimation(null);
     diceRouletteResolver.current = null;
-    return result;
   }
 
   async function finishTurn(nextUnits = units) {
@@ -1036,7 +1037,8 @@ export function App() {
     setDiceRolling(true);
     setBanner("サイコロを振る");
 
-    const roll = await playDiceAnimation("育成ダイス", fixedRoll ?? undefined);
+    const roll = fixedRoll ?? randomDiceValue();
+    await playDiceAnimation("育成ダイス", roll);
     setFixedRoll(null);
     setLastRoll(roll);
     setBanner(`${roll}マス進む`);
