@@ -125,7 +125,7 @@ h3 {
 .modal {
   border: 1px solid #d7cfbd;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
+  background: #ffffff;
   box-shadow: 0 16px 38px rgba(68, 54, 33, 0.12);
 }
 
@@ -292,10 +292,15 @@ h3 {
 }
 
 .boardGrid {
+  --board-path-inset: 8px;
   display: grid;
   grid-template-columns: repeat(5, minmax(110px, 1fr));
   gap: 10px;
   margin-top: 16px;
+  padding: var(--board-path-inset);
+  border: 1px solid #d7cfbd;
+  border-radius: 8px;
+  background-color: #f8f6ee;
   position: relative;
   isolation: isolate;
 }
@@ -303,7 +308,7 @@ h3 {
 .boardGrid::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: var(--board-path-inset);
   z-index: 0;
   background:
     linear-gradient(#c9c2b1, #c9c2b1) 50% 25% / 80% 3px no-repeat,
@@ -1323,7 +1328,7 @@ h3 {
   padding: 10px;
   border: 1px solid #d7cfbd;
   border-radius: 8px;
-  background: rgba(248, 246, 238, 0.92);
+  background: #f8f6ee;
 }
 
 .prepInstallPanel p {
@@ -1350,9 +1355,14 @@ h3 {
 }
 
 .prepBoardGrid {
+  --board-path-inset: 4px;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
+  padding: var(--board-path-inset);
+  border: 1px solid #d7cfbd;
+  border-radius: 8px;
+  background-color: #f8f6ee;
   position: relative;
   isolation: isolate;
 }
@@ -1360,7 +1370,7 @@ h3 {
 .prepBoardGrid::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: var(--board-path-inset);
   z-index: 0;
   background:
     linear-gradient(#c9c2b1, #c9c2b1) 50% 25% / 80% 2px no-repeat,
@@ -1565,6 +1575,7 @@ h3 {
   }
 
   .boardGrid {
+    --board-path-inset: 4px;
     grid-template-columns: repeat(5, minmax(82px, 1fr));
     gap: 6px;
     margin-top: 8px;
@@ -1716,6 +1727,7 @@ h3 {
   }
 
   .boardGrid {
+    --board-path-inset: 4px;
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
@@ -1737,6 +1749,7 @@ h3 {
   }
 
   .boardGrid {
+    --board-path-inset: 4px;
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
