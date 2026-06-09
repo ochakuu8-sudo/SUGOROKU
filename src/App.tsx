@@ -57,6 +57,8 @@ type SkillEffect =
   | "slot"
   | "burning"
   | "tackle"
+  | "meditate"
+  | "stance"
   | "dash";
 
 type Tile = {
@@ -84,6 +86,7 @@ type BattleUnit = Unit & {
   focus: number;
   swiftTurns: number;
   swiftBonus: number;
+  mana: number;
   charges: Record<string, number>;
   burns: Record<number, number>;
 };
@@ -265,6 +268,19 @@ const skillPool: Skill[] = [
     name: "集中",
     effect: "focus",
     description: "集中1を獲得。次の攻撃ダメージが2倍。",
+  },
+  {
+    id: "meditate",
+    name: "瞑想",
+    effect: "meditate",
+    description: "マナを2獲得。",
+  },
+  {
+    id: "stance",
+    name: "構え",
+    effect: "stance",
+    cost: 1,
+    description: "マナ1消費。1マス進み、次のマスの効果も発動。",
   },
   {
     id: "slot",
@@ -513,6 +529,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
     focus: 0,
     swiftTurns: 0,
     swiftBonus: 0,
+    mana: 0,
     charges: {},
     burns: {},
   }));
@@ -588,6 +605,12 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
     return { damage, focused };
   }
 
+  function spendMana(unit: BattleUnit, amount: number) {
+    if (unit.mana < amount) return false;
+    unit.mana -= amount;
+    return true;
+  }
+
   function triggerPassEffects(unit: BattleUnit, slotIndex: number) {
     if (unit.burns[slotIndex] > 0) {
       const burnDamage = 3;
@@ -607,7 +630,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
     return enemy.hp <= 0;
   }
 
-  function resolveUnitSkill(unit: BattleUnit, skill: Skill, slotIndex: number, roll: number) {
+  function resolveUnitSkill(unit: BattleUnit, skill: Skill, slotIndex: number, roll: number, chainDepth = 0) {
     switch (skill.effect) {
       case "guard": {
         unit.tempHp += unit.stats.vitality;
@@ -627,6 +650,10 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
         return;
       }
       case "firebolt": {
+        if (!spendMana(unit, skill.cost ?? 2)) {
+          unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。マナ不足。`, "neutral", "none");
+          return;
+        }
         const { damage, focused } = damageEnemy(unit, unit.stats.power + 5);
         unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "enemy", damage);
         return;
@@ -664,6 +691,30 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
       case "focus": {
         unit.focus += 1;
         unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。集中+1。次の攻撃が2倍。`, "good", "self");
+        return;
+      }
+      case "meditate": {
+        unit.mana += 2;
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。マナ+2。現在${unit.mana}。`, "good", "self");
+        return;
+      }
+      case "stance": {
+        if (!spendMana(unit, skill.cost ?? 1)) {
+          unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。マナ不足。`, "neutral", "none");
+          return;
+        }
+        if (chainDepth >= unit.skillBoard.length) {
+          unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。これ以上は進めない。`, "neutral", "none");
+          return;
+        }
+
+        const nextSlotIndex = (slotIndex + 1) % unit.skillBoard.length;
+        unit.boardIndex = nextSlotIndex;
+        unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。マナ1消費して1マス進む。`, "good", "none");
+        if (triggerPassEffects(unit, nextSlotIndex) || unit.hp <= 0 || enemy.hp <= 0) return;
+
+        const nextSkill = unit.skillBoard[nextSlotIndex];
+        resolveUnitSkill(unit, nextSkill, nextSlotIndex, 0, chainDepth + 1);
         return;
       }
       case "slot": {
@@ -806,7 +857,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
   return {
     win: enemy.hp <= 0,
     logs,
-    units: fighters.map(({ tempHp: _tempHp, focus: _focus, swiftTurns: _swiftTurns, swiftBonus: _swiftBonus, charges: _charges, burns: _burns, ...unit }) => ({
+    units: fighters.map(({ tempHp: _tempHp, focus: _focus, swiftTurns: _swiftTurns, swiftBonus: _swiftBonus, mana: _mana, charges: _charges, burns: _burns, ...unit }) => ({
       ...unit,
       hp: Math.max(0, unit.hp),
     })),
@@ -1211,7 +1262,7 @@ export function App() {
       }
 
       if (event.type === "unit") {
-        await waitForBattleRoll(event.roll);
+        if (event.roll > 0) await waitForBattleRoll(event.roll);
         setActiveSkill(null);
         setBattleUnits((current) =>
           current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.slotIndex } : unit)),
@@ -1230,7 +1281,7 @@ export function App() {
         setBattleView((current) =>
           current && {
             ...current,
-            message: `出目${event.roll}: ${event.skillName} 発動`,
+            message: event.roll > 0 ? `出目${event.roll}: ${event.skillName} 発動` : `${event.skillName} 追加発動`,
             tone: event.tone,
           },
         );
