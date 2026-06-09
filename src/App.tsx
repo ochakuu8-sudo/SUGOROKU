@@ -974,8 +974,9 @@ export function App() {
     setUnits((current) => current.map((unit) => (unit.id === id ? updater(unit) : unit)));
   }
 
-  function randomDiceValue() {
-    return Math.ceil(Math.random() * 3);
+  function randomDiceValue(except?: number) {
+    const values = [1, 2, 3].filter((value) => value !== except);
+    return values[Math.floor(Math.random() * values.length)];
   }
 
   function stopDiceRoulette() {
@@ -998,7 +999,7 @@ export function App() {
     diceRouletteValue.current = randomDiceValue();
     setDiceAnimation({ label, mode: "rolling", value: diceRouletteValue.current });
     diceRouletteTimer.current = window.setInterval(() => {
-      const nextValue = randomDiceValue();
+      const nextValue = randomDiceValue(diceRouletteValue.current);
       diceRouletteValue.current = nextValue;
       setDiceAnimation((current) => (current?.mode === "rolling" ? { ...current, value: nextValue } : current));
     }, 70);
