@@ -180,6 +180,75 @@ h3 {
   animation: button-shake 0.38s ease infinite;
 }
 
+.diceControlGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.diceSelect {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: 0;
+}
+
+.diceSelect button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid #c9c2b1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #273137;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.diceSelect button.selected {
+  border-color: #1f575d;
+  background: #e4f1ed;
+}
+
+.diceSelect button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.diceSelect strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diceSelect span {
+  color: #1f575d;
+}
+
+.diceSelect.compact button {
+  min-height: 28px;
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.inlineDiceControl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.inlineDiceControl > span {
+  white-space: nowrap;
+}
+
 .dieCube {
   display: inline-grid;
   place-items: center;
@@ -1088,12 +1157,19 @@ h3 {
 
 .battleCommands {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: center;
+  align-items: center;
   min-height: 40px;
 }
 
 .battleCommands .primaryButton {
   min-width: 168px;
+}
+
+.battleDiceSelect {
+  justify-content: center;
 }
 
 .enemyCard {
@@ -1551,6 +1627,17 @@ h3 {
     min-height: 32px;
     padding: 5px 9px;
     font-size: 12px;
+  }
+
+  .diceControlGroup {
+    gap: 5px;
+  }
+
+  .diceSelect button {
+    min-height: 28px;
+    padding: 3px 5px;
+    border-radius: 6px;
+    font-size: 9px;
   }
 
   .boardGrid {

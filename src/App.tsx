@@ -38,6 +38,13 @@ type DiceAnimation = {
   value?: number;
 };
 
+type GameDie = {
+  id: string;
+  name: string;
+  label: string;
+  faces: number[];
+};
+
 type SkillEffect =
   | "attack"
   | "heavySlash"
@@ -376,6 +383,11 @@ const initialHero: Unit = {
   skillBoard: [normalAttack, normalAttack, normalAttack, normalAttack, normalAttack, normalAttack],
 };
 
+const initialDice: GameDie[] = [
+  { id: "swordsman-1", name: "剣士サイコロ", label: "1", faces: [1] },
+  { id: "normal-1d3", name: "ノーマルサイコロ", label: "1-3", faces: [1, 2, 3] },
+];
+
 let idCounter = 0;
 
 const battleTiming = {
@@ -498,7 +510,11 @@ function getTileDescription(tile: Tile) {
   return "効果なし。";
 }
 
-function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): BattleResult {
+function rollGameDie(die: GameDie) {
+  return die.faces[Math.floor(Math.random() * die.faces.length)];
+}
+
+function runBattle(units: Unit[], battleCount: number, battleItems: Item[], battleDie: GameDie): BattleResult {
   const fighters: BattleUnit[] = units.map((unit) => ({
     ...unit,
     hp: Math.min(unit.hp, maxHp(unit)),
@@ -810,7 +826,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[]): Bat
       }
 
       const unit = actor.unit;
-      const baseRoll = Math.ceil(Math.random() * 3);
+      const baseRoll = rollGameDie(battleDie);
       const swiftBonus = unit.swiftTurns > 0 ? unit.swiftBonus : 0;
       const battleRoll = baseRoll + swiftBonus;
       if (unit.swiftTurns > 0) {
@@ -855,6 +871,9 @@ export function App() {
   const [coins, setCoins] = useState(18);
   const [items, setItems] = useState<Item[]>([]);
   const [battleItems, setBattleItems] = useState<Item[]>([]);
+  const [ownedDice] = useState<GameDie[]>(initialDice);
+  const [selectedExploreDieId, setSelectedExploreDieId] = useState("normal-1d3");
+  const [selectedBattleDieId, setSelectedBattleDieId] = useState("normal-1d3");
   const [tileInventory, setTileInventory] = useState<Tile[]>([]);
   const [skillInventory, setSkillInventory] = useState<Skill[]>([]);
   const [phase, setPhase] = useState<Phase>("explore");
@@ -899,6 +918,8 @@ export function App() {
 
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
   const skillCatalog = useMemo(() => [normalAttack, ...skillPool], []);
+  const selectedExploreDie = useMemo(() => ownedDice.find((die) => die.id === selectedExploreDieId) ?? ownedDice[0], [ownedDice, selectedExploreDieId]);
+  const selectedBattleDie = useMemo(() => ownedDice.find((die) => die.id === selectedBattleDieId) ?? ownedDice[0], [ownedDice, selectedBattleDieId]);
   const locked = phase === "animating" || phase === "battle";
 
   function pushLog(message: string) {
@@ -1001,8 +1022,8 @@ export function App() {
     setDiceRolling(true);
     setBanner("サイコロを振る");
 
-    const roll = fixedRoll ?? randomDiceValue();
-    await playDiceAnimation("育成ダイス", roll);
+    const roll = fixedRoll ?? rollGameDie(selectedExploreDie);
+    await playDiceAnimation(selectedExploreDie.name, roll);
     setFixedRoll(null);
     setLastRoll(roll);
     setBanner(`${roll}マス進む`);
@@ -1117,7 +1138,7 @@ export function App() {
     if (phase !== "battle" || !battleAwaitingRoll || battleRolling) return;
     setBattleRolling(true);
     setBattleView((current) => current && { ...current, message: "サイコロを振っています...", tone: "neutral" });
-    await playDiceAnimation("戦闘ダイス", battleRollValue.current ?? randomDiceValue());
+    await playDiceAnimation(selectedBattleDie.name, battleRollValue.current ?? rollGameDie(selectedBattleDie));
     setBattleRolling(false);
     setBattleAwaitingRoll(false);
     battleRollValue.current = null;
@@ -1143,7 +1164,7 @@ export function App() {
     const nextBattle = battleCount + 1;
     const usedBattleItems = battleItems;
     setBattleItems([]);
-    const result = runBattle(currentUnits, nextBattle, usedBattleItems);
+    const result = runBattle(currentUnits, nextBattle, usedBattleItems, selectedBattleDie);
     setBattleUnits(currentUnits.map((unit) => ({ ...unit })));
 
     setBattleView({
@@ -1494,6 +1515,8 @@ export function App() {
     setCoins(18);
     setItems([]);
     setBattleItems([]);
+    setSelectedExploreDieId("normal-1d3");
+    setSelectedBattleDieId("normal-1d3");
     setTileInventory([]);
     setSkillInventory([]);
     setPhase("explore");
@@ -1648,12 +1671,28 @@ export function App() {
         <div className="boardPanel">
           <div className="boardHeader">
             <h2>共通盤面</h2>
-            <button className={`primaryButton diceButton ${diceRolling ? "rolling" : ""}`} onClick={() => void rollDice()} disabled={phase !== "explore" || locked}>
-              <span className="dieCube" aria-hidden="true">
-                {diceRolling ? "?" : fixedRoll ?? lastRoll ?? "D3"}
-              </span>
-              {diceRolling ? "..." : fixedRoll ? `${fixedRoll}進む` : "1D3を振る"}
-            </button>
+            <div className="diceControlGroup">
+              <div className="diceSelect" aria-label="育成サイコロ">
+                {ownedDice.map((die) => (
+                  <button
+                    key={`explore-die-${die.id}`}
+                    type="button"
+                    className={selectedExploreDieId === die.id ? "selected" : ""}
+                    onClick={() => setSelectedExploreDieId(die.id)}
+                    disabled={phase !== "explore" || locked}
+                  >
+                    <strong>{die.name}</strong>
+                    <span>{die.label}</span>
+                  </button>
+                ))}
+              </div>
+              <button className={`primaryButton diceButton ${diceRolling ? "rolling" : ""}`} onClick={() => void rollDice()} disabled={phase !== "explore" || locked}>
+                <span className="dieCube" aria-hidden="true">
+                  {diceRolling ? "?" : fixedRoll ?? lastRoll ?? selectedExploreDie.label}
+                </span>
+                {diceRolling ? "..." : fixedRoll ? `${fixedRoll}進む` : `${selectedExploreDie.name}を振る`}
+              </button>
+            </div>
           </div>
 
           <div className="boardGrid">
@@ -1687,6 +1726,23 @@ export function App() {
 
           <div className="runControls">
             <span>直近出目: {lastRoll ?? "-"}</span>
+            <div className="inlineDiceControl">
+              <span>戦闘サイコロ</span>
+              <div className="diceSelect compact" aria-label="戦闘サイコロ">
+                {ownedDice.map((die) => (
+                  <button
+                    key={`next-battle-die-${die.id}`}
+                    type="button"
+                    className={selectedBattleDieId === die.id ? "selected" : ""}
+                    onClick={() => setSelectedBattleDieId(die.id)}
+                    disabled={locked}
+                  >
+                    <strong>{die.name}</strong>
+                    <span>{die.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <span>次の戦闘まで: {5 - (turn % 5)}ターン</span>
             <button onClick={() => setPauseView("menu")} className="ghostButton" disabled={locked}>
               <Pause size={16} />
@@ -1892,15 +1948,29 @@ export function App() {
                   </div>
                   <p>{battleView.message}</p>
                   <div className="battleCommands">
+                    <div className="diceSelect battleDiceSelect" aria-label="戦闘サイコロ">
+                      {ownedDice.map((die) => (
+                        <button
+                          key={`battle-die-${die.id}`}
+                          type="button"
+                          className={selectedBattleDieId === die.id ? "selected" : ""}
+                          onClick={() => setSelectedBattleDieId(die.id)}
+                          disabled={phase === "battle"}
+                        >
+                          <strong>{die.name}</strong>
+                          <span>{die.label}</span>
+                        </button>
+                      ))}
+                    </div>
                     <button
                       className={`primaryButton diceButton ${battleRolling ? "rolling" : ""}`}
                       onClick={() => void rollBattleDice()}
                       disabled={!battleAwaitingRoll || battleRolling}
                     >
                       <span className="dieCube" aria-hidden="true">
-                        {battleRolling ? "?" : "D3"}
+                        {battleRolling ? "?" : selectedBattleDie.label}
                       </span>
-                      {battleRolling ? "..." : "サイコロを振る"}
+                      {battleRolling ? "..." : `${selectedBattleDie.name}を振る`}
                     </button>
                   </div>
                 </div>
