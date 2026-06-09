@@ -1253,6 +1253,7 @@ h3 {
 
 .enemySkillSlot {
   background: #fff3ed;
+  cursor: pointer;
 }
 
 .enemySkillSlot.cursor {
@@ -1269,6 +1270,14 @@ h3 {
   background:
     radial-gradient(circle at 35% 28%, #ffffff 0 13%, transparent 14%),
     linear-gradient(145deg, #6c2b2b, #c45238);
+}
+
+.previewEnemyBoard {
+  margin-top: 14px;
+}
+
+.previewEnemySkill {
+  min-height: 58px;
 }
 
 .battleStage.bad .enemyCard {

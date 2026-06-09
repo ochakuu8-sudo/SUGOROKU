@@ -69,6 +69,7 @@ type Tile = {
   type: TileType;
   level: number;
   rare?: boolean;
+  enemySkillBoard?: Skill[];
 };
 
 type Unit = {
@@ -99,13 +100,7 @@ type Skill = {
   cost?: number;
 };
 
-type EnemySkill = {
-  id: string;
-  name: string;
-  description: string;
-  effect: "strike" | "heavy" | "cleave" | "recover";
-  rewardSkill: Skill;
-};
+type EnemySkill = Skill;
 
 type EnemyCombatant = {
   name: string;
@@ -303,36 +298,20 @@ const skillPool: Skill[] = [
   },
 ];
 
-const enemySkillPool: Record<string, EnemySkill> = {
-  strike: {
-    id: "enemy-strike",
-    name: "爪撃",
-    effect: "strike",
-    description: "最も弱っている味方1体へ通常ダメージ。",
-    rewardSkill: skillPool[2],
-  },
-  heavy: {
-    id: "enemy-heavy",
-    name: "強打",
-    effect: "heavy",
-    description: "最も弱っている味方1体へ大ダメージ。",
-    rewardSkill: skillPool[0],
-  },
-  cleave: {
-    id: "enemy-cleave",
-    name: "なぎ払い",
-    effect: "cleave",
-    description: "味方全員へ小ダメージ。",
-    rewardSkill: skillPool[5],
-  },
-  recover: {
-    id: "enemy-recover",
-    name: "再生",
-    effect: "recover",
-    description: "敵自身のHPを少し回復。",
-    rewardSkill: skillPool[3],
-  },
-};
+function skillCatalogPool() {
+  return [normalAttack, ...skillPool];
+}
+
+function randomEnemySkillBoard(count = 4) {
+  return Array.from({ length: count }, () => randomFrom(skillCatalogPool()));
+}
+
+function enemySkillRole(skill: Skill): "strike" | "heavy" | "cleave" | "recover" {
+  if (["heal", "rally", "guard", "meditate", "focus", "dash"].includes(skill.effect)) return "recover";
+  if (["poison", "burning", "tackle", "slot", "stance"].includes(skill.effect)) return "cleave";
+  if (["heavySlash", "firebolt", "spiritSlash"].includes(skill.effect)) return "heavy";
+  return "strike";
+}
 
 const recruitPool: Omit<Unit, "hp" | "boardIndex">[] = [
   {
@@ -375,7 +354,7 @@ const itemPool: Item[] = [
 ];
 
 const emptyTile = (id: string): Tile => ({ id, name: "空き", type: "empty", level: 1 });
-const battleTile = (id: string): Tile => ({ id, name: "戦闘", type: "battle", level: 1 });
+const battleTile = (id: string): Tile => ({ id, name: "戦闘", type: "battle", level: 1, enemySkillBoard: randomEnemySkillBoard() });
 
 const initialBoard: Tile[] = Array.from({ length: 10 }, (_, index) => battleTile(`battle-${index + 1}`));
 
@@ -435,10 +414,10 @@ function maxHp(unit: Unit) {
   return unit.maxHp;
 }
 
-function makeEnemy(battleCount: number): EnemyCombatant {
+function makeEnemy(battleCount: number, skillBoard?: Skill[]): EnemyCombatant {
   const isBoss = battleCount === 10;
   const isMidBoss = battleCount % 3 === 0;
-  const enemySkills = Object.values(enemySkillPool);
+  const skillCount = isBoss ? 6 : isMidBoss ? 5 : 4;
   return {
     name: isBoss ? "最終ボス" : isMidBoss ? "中ボス" : "魔物",
     hp: 28 + battleCount * 12,
@@ -446,7 +425,7 @@ function makeEnemy(battleCount: number): EnemyCombatant {
     power: 4 + battleCount * 2,
     agility: 3 + battleCount,
     boardIndex: 0,
-    skillBoard: Array.from({ length: isBoss ? 6 : isMidBoss ? 5 : 4 }, () => randomFrom(enemySkills)),
+    skillBoard: skillBoard && skillBoard.length > 0 ? skillBoard : randomEnemySkillBoard(skillCount),
   };
 }
 
@@ -805,9 +784,10 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[], batt
       if (actor.type === "enemy") {
         const slotIndex = enemy.boardIndex % enemy.skillBoard.length;
         const skill = enemy.skillBoard[slotIndex];
+        const role = enemySkillRole(skill);
         enemy.boardIndex = (enemy.boardIndex + 1) % enemy.skillBoard.length;
 
-        if (skill.effect === "recover") {
+        if (role === "recover") {
           const amount = Math.ceil(enemy.power * 1.2);
           enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
           const text = `${enemy.name}の${skill.name}。HPを${amount}回復。`;
@@ -826,7 +806,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[], batt
           continue;
         }
 
-        if (skill.effect === "cleave") {
+        if (role === "cleave") {
           const damage = Math.max(1, Math.floor(enemy.power * 0.55));
           fighters.forEach((target) => {
             if (target.hp <= 0) return;
@@ -851,7 +831,7 @@ function runBattle(units: Unit[], battleCount: number, battleItems: Item[], batt
         }
 
         const target = fighters.filter((unit) => unit.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
-        const damage = skill.effect === "heavy" ? enemy.power + 3 : enemy.power;
+        const damage = role === "heavy" ? enemy.power + 3 : enemy.power;
         const absorbed = Math.min(target.tempHp, damage);
         target.tempHp -= absorbed;
         target.hp -= damage - absorbed;
@@ -932,6 +912,7 @@ export function App() {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [shopOffers, setShopOffers] = useState<Tile[]>([]);
   const [recruits, setRecruits] = useState<Omit<Unit, "hp" | "boardIndex">[]>([]);
+  const [previewEnemyTile, setPreviewEnemyTile] = useState<{ index: number; tile: Tile } | null>(null);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
   const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(null);
   const [selectedSkillIndex, setSelectedSkillIndex] = useState<number | null>(null);
@@ -1104,7 +1085,7 @@ export function App() {
     }
 
     if (tile.type === "battle") {
-      await startBattle(units);
+      await startBattle(units, tile.enemySkillBoard ?? randomEnemySkillBoard());
       return;
     }
 
@@ -1208,8 +1189,9 @@ export function App() {
     }
   }
 
-  async function startBattle(currentUnits: Unit[]) {
+  async function startBattle(currentUnits: Unit[], enemySkillBoard?: Skill[]) {
     setPhase("battle");
+    setPreviewEnemyTile(null);
     setBanner("戦闘開始");
     const nextBattle = battleCount + 1;
     const usedBattleItems = battleItems;
@@ -1225,7 +1207,7 @@ export function App() {
       charges: {},
       burns: {},
     }));
-    const enemy = makeEnemy(nextBattle);
+    const enemy = makeEnemy(nextBattle, enemySkillBoard);
     const logs: string[] = [`${enemy.name}が現れた。`];
     let enemyPoison = 0;
     let battleCoins = 0;
@@ -1612,9 +1594,10 @@ export function App() {
 
         const slotIndex = enemy.boardIndex % enemy.skillBoard.length;
         const skill = enemy.skillBoard[slotIndex];
+        const role = enemySkillRole(skill);
         enemy.boardIndex = (enemy.boardIndex + 1) % enemy.skillBoard.length;
 
-        if (skill.effect === "recover") {
+        if (role === "recover") {
           const amount = Math.ceil(enemy.power * 1.2);
           enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
           const text = `${enemy.name}の${skill.name}。HPを${amount}回復。`;
@@ -1633,7 +1616,7 @@ export function App() {
           continue;
         }
 
-        if (skill.effect === "cleave") {
+        if (role === "cleave") {
           const damage = Math.max(1, Math.floor(enemy.power * 0.55));
           fighters.forEach((target) => {
             if (target.hp <= 0) return;
@@ -1658,7 +1641,7 @@ export function App() {
         }
 
         const target = fighters.filter((unit) => unit.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
-        const damage = skill.effect === "heavy" ? enemy.power + 3 : enemy.power;
+        const damage = role === "heavy" ? enemy.power + 3 : enemy.power;
         const absorbed = Math.min(target.tempHp, damage);
         target.tempHp -= absorbed;
         target.hp -= damage - absorbed;
@@ -1707,7 +1690,7 @@ export function App() {
     }
 
     setBattleCount(nextBattle);
-    const lootSkill = randomFrom(enemy.skillBoard).rewardSkill;
+    const lootSkill = randomFrom(enemy.skillBoard);
     setSkillInventory((current) => [...current, lootSkill].slice(0, 6));
     pushLog(`敵のスキル「${lootSkill.name}」を入手。`);
     await flashInventory(lootSkill.name);
@@ -1894,6 +1877,7 @@ export function App() {
     setRewards([]);
     setShopOffers([]);
     setRecruits([]);
+    setPreviewEnemyTile(null);
     setSelectedItemIndex(null);
     setSelectedTileIndex(null);
     setSelectedSkillIndex(null);
@@ -2060,8 +2044,19 @@ export function App() {
                   tileEffectIndex === index ? "effect" : "",
                   installedTileIndex === index ? "installing" : "",
                 ].join(" ")}
-                onClick={() => phase === "prep" && void installTile(index)}
-                disabled={phase !== "prep" || selectedTileIndex === null || locked}
+                onClick={() => {
+                  if (phase === "prep") {
+                    void installTile(index);
+                    return;
+                  }
+                  if (phase === "explore" && tile.type === "battle") {
+                    setPreviewEnemyTile({ index, tile });
+                  }
+                }}
+                disabled={
+                  locked ||
+                  (phase === "prep" ? selectedTileIndex === null : !(phase === "explore" && tile.type === "battle"))
+                }
                 title={getTileDescription(tile)}
               >
                 <span className="tileIndex">{index + 1}</span>
@@ -2174,6 +2169,7 @@ export function App() {
 
       {(pauseView ||
         showLog ||
+        previewEnemyTile ||
         phase === "chooseTile" ||
         phase === "battle" ||
         phase === "reward" ||
@@ -2242,6 +2238,32 @@ export function App() {
               </>
             )}
 
+            {!pauseView && !showLog && previewEnemyTile && phase === "explore" && (
+              <>
+                <div className="modalHeader">
+                  <h2>{previewEnemyTile.index + 1}マス目の敵</h2>
+                  <button className="ghostButton" onClick={() => setPreviewEnemyTile(null)}>
+                    閉じる
+                  </button>
+                </div>
+                <p>この戦闘マスに止まると、下のスキルボードを持つ敵と戦います。スキルをタップすると詳細を確認できます。</p>
+                <div className="battleSkillBoard enemySkillBoard previewEnemyBoard">
+                  {(previewEnemyTile.tile.enemySkillBoard ?? []).map((skill, index) => (
+                    <button
+                      key={`preview-enemy-${skill.id}-${index}`}
+                      type="button"
+                      className="battleSkillSlot enemySkillSlot previewEnemySkill"
+                      onClick={() => setSkillPopup(skill)}
+                      title={skill.description}
+                    >
+                      <small>{index + 1}</small>
+                      {skill.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
             {!showLog && phase === "chooseTile" && pendingTileIndex !== null && (
               <>
                 <h2>マス効果選択</h2>
@@ -2273,7 +2295,8 @@ export function App() {
                     </div>
                     <div className="battleSkillBoard enemySkillBoard">
                       {battleView.enemySkillBoard.map((skill, index) => (
-                        <span
+                        <button
+                          type="button"
                           key={`enemy-battle-${skill.id}-${index}`}
                           className={[
                             "battleSkillSlot",
@@ -2281,13 +2304,15 @@ export function App() {
                             battleView.enemyBoardIndex === index ? "cursor" : "",
                             activeEnemySkill === index ? "firing" : "",
                           ].join(" ")}
+                          onClick={() => setSkillPopup(skill)}
+                          title={skill.description}
                         >
                           <small>{index + 1}</small>
                           {skill.name}
                           {(battleView.enemyBoardIndex === index || activeEnemySkill === index) && (
                             <i className={`skillPiece enemyPiece ${activeEnemySkill === index ? "strike" : ""}`} />
                           )}
-                        </span>
+                        </button>
                       ))}
                     </div>
                     {renderFloating("enemy", "enemy")}
