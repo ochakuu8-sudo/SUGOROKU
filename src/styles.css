@@ -131,6 +131,7 @@ h3 {
 
 .boardPanel {
   padding: 18px;
+  background: #ffffff;
 }
 
 .boardHeader,
@@ -296,12 +297,20 @@ h3 {
   gap: 10px;
   margin-top: 16px;
   position: relative;
+  isolation: isolate;
+}
+
+.boardGrid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   background:
     linear-gradient(#c9c2b1, #c9c2b1) 50% 25% / 80% 3px no-repeat,
     linear-gradient(#c9c2b1, #c9c2b1) 50% 75% / 80% 3px no-repeat,
     linear-gradient(#c9c2b1, #c9c2b1) 10% 50% / 3px 50% no-repeat,
     linear-gradient(#c9c2b1, #c9c2b1) 90% 50% / 3px 50% no-repeat;
-  isolation: isolate;
+  pointer-events: none;
 }
 
 .boardGrid .tile:nth-child(6) {
@@ -1331,12 +1340,20 @@ h3 {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   position: relative;
+  isolation: isolate;
+}
+
+.prepBoardGrid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   background:
     linear-gradient(#c9c2b1, #c9c2b1) 50% 25% / 80% 2px no-repeat,
     linear-gradient(#c9c2b1, #c9c2b1) 50% 75% / 80% 2px no-repeat,
     linear-gradient(#c9c2b1, #c9c2b1) 10% 50% / 2px 50% no-repeat,
     linear-gradient(#c9c2b1, #c9c2b1) 90% 50% / 2px 50% no-repeat;
-  isolation: isolate;
+  pointer-events: none;
 }
 
 .prepBoardGrid .prepBoardTile:nth-child(6) {
