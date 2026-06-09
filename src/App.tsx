@@ -920,7 +920,6 @@ export function App() {
   const battleRollValue = useRef<number | null>(null);
   const diceRouletteTimer = useRef<number | null>(null);
   const diceRouletteValue = useRef(1);
-  const diceRouletteResolver = useRef<(() => void) | null>(null);
 
   const aliveUnits = useMemo(() => units.filter((unit) => unit.hp > 0).length, [units]);
   const skillCatalog = useMemo(() => [normalAttack, ...skillPool], []);
@@ -989,16 +988,8 @@ export function App() {
     }
   }
 
-  function stopDiceRouletteByTap() {
-    const resolve = diceRouletteResolver.current;
-    if (!resolve) return;
-    diceRouletteResolver.current = null;
-    resolve();
-  }
-
   async function playDiceAnimation(label: string, result: number) {
     stopDiceRoulette();
-    diceRouletteResolver.current = null;
     diceRouletteValue.current = 1;
     setDiceAnimation({ label, mode: "rolling", value: diceRouletteValue.current });
     diceRouletteTimer.current = window.setInterval(() => {
@@ -1006,14 +997,11 @@ export function App() {
       diceRouletteValue.current = nextValue;
       setDiceAnimation((current) => (current?.mode === "rolling" ? { ...current, value: nextValue } : current));
     }, 70);
-    await new Promise<void>((resolve) => {
-      diceRouletteResolver.current = resolve;
-    });
+    await wait(1000);
     stopDiceRoulette();
     setDiceAnimation({ label, mode: "result", value: result });
     await wait(420);
     setDiceAnimation(null);
-    diceRouletteResolver.current = null;
   }
 
   async function finishTurn(nextUnits = units) {
@@ -1374,7 +1362,6 @@ export function App() {
     setBattleAwaitingRoll(false);
     setBattleRolling(false);
     stopDiceRoulette();
-    diceRouletteResolver.current = null;
     setDiceAnimation(null);
     battleRollResolver.current = null;
     battleRollValue.current = null;
@@ -1405,7 +1392,6 @@ export function App() {
     setBattleAwaitingRoll(false);
     setBattleRolling(false);
     stopDiceRoulette();
-    diceRouletteResolver.current = null;
     setDiceAnimation(null);
     battleRollResolver.current = null;
     battleRollValue.current = null;
@@ -1579,7 +1565,6 @@ export function App() {
     setBanner(null);
     setDiceRolling(false);
     stopDiceRoulette();
-    diceRouletteResolver.current = null;
     setDiceAnimation(null);
     setMovingTrail([]);
     setArrivalIndex(null);
@@ -1684,13 +1669,13 @@ export function App() {
     <main className={`app ${locked ? "locked" : ""}`}>
       {banner && <div className="bannerPulse">{banner}</div>}
       {diceAnimation && (
-        <div className={`diceAnimationLayer ${diceAnimation.mode}`} onClick={stopDiceRouletteByTap} aria-live="polite">
+        <div className={`diceAnimationLayer ${diceAnimation.mode}`} aria-live="polite">
           <div className="diceAnimationCard">
             <span>{diceAnimation.label}</span>
             <div className="bigDie" aria-hidden="true">
               <i>{diceAnimation.value ?? "?"}</i>
             </div>
-            <strong>{diceAnimation.mode === "result" ? "決定" : "タップで停止"}</strong>
+            <strong>{diceAnimation.mode === "result" ? "決定" : "抽選中"}</strong>
           </div>
         </div>
       )}
