@@ -749,6 +749,26 @@ h3 {
   animation: skill-fire 0.42s ease;
 }
 
+.unitSkillPiece {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, #ffffff 0 13%, transparent 14%),
+    linear-gradient(145deg, #e84f3f, #9c241d);
+  box-shadow: 0 6px 12px rgba(142, 45, 45, 0.28);
+  pointer-events: none;
+  animation: skill-piece-step 0.3s cubic-bezier(0.16, 1.35, 0.42, 1);
+}
+
+.unitSkillPiece.strike {
+  animation: skill-piece-strike 0.42s ease;
+}
+
 .unitPanelGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2470,6 +2490,14 @@ h3 {
     font-size: 7px;
   }
 
+  .unitSkillPiece {
+    right: 4px;
+    bottom: 4px;
+    width: 12px;
+    height: 12px;
+    border-width: 1px;
+  }
+
   .unitPanelGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
@@ -2719,6 +2747,14 @@ h3 {
 
   .unitInfoSkill small {
     font-size: 7px;
+  }
+
+  .unitSkillPiece {
+    right: 4px;
+    bottom: 4px;
+    width: 12px;
+    height: 12px;
+    border-width: 1px;
   }
 
   .battleUnits {

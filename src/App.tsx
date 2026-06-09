@@ -1194,6 +1194,17 @@ export function App() {
     resolve?.();
   }
 
+  async function animateBattleUnitMove(unitId: string, steps: number) {
+    for (let step = 0; step < steps; step += 1) {
+      setBattleUnits((current) =>
+        current.map((unit) =>
+          unit.id === unitId ? { ...unit, boardIndex: (unit.boardIndex + 1) % unit.skillBoard.length } : unit,
+        ),
+      );
+      await wait(130);
+    }
+  }
+
   async function startBattle(currentUnits: Unit[]) {
     setPhase("battle");
     setBanner("戦闘開始");
@@ -1255,19 +1266,23 @@ export function App() {
       if (event.type === "unit") {
         if (event.roll > 0) await waitForBattleRoll(event.roll);
         setActiveSkill(null);
-        setBattleUnits((current) =>
-          current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.slotIndex } : unit)),
-        );
         setBattleView((current) =>
           current && {
             ...current,
             enemyHp: current.enemyHp,
             activeUnitId: event.unitId,
-            activeSlot: event.slotIndex,
+            activeSlot: undefined,
             tone: "neutral",
           },
         );
-        await wait(battleTiming.stepToSkill);
+        if (event.roll > 0) {
+          await animateBattleUnitMove(event.unitId, event.roll);
+        }
+        setBattleUnits((current) =>
+          current.map((unit) => (unit.id === event.unitId ? { ...unit, boardIndex: event.slotIndex } : unit)),
+        );
+        setBattleView((current) => current && { ...current, activeSlot: event.slotIndex });
+        await wait(event.roll > 0 ? 120 : battleTiming.stepToSkill);
         setActiveSkill({ unitId: event.unitId, slotIndex: event.slotIndex });
         setBattleView((current) =>
           current && {
@@ -1609,6 +1624,7 @@ export function App() {
     } = {},
   ) {
     const showHp = options.showHp ?? true;
+    const showSkillPiece = options.className?.split(" ").includes("battleInfo") ?? false;
     return (
       <article
         className={[
@@ -1656,6 +1672,7 @@ export function App() {
               >
                 <small>{index + 1}</small>
                 <span>{skill.name}</span>
+                {showSkillPiece && unit.boardIndex === index && <i className={`unitSkillPiece ${firing ? "strike" : ""}`} />}
               </button>
             );
           })}
