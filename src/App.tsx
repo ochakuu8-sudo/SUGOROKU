@@ -282,7 +282,7 @@ const skillPool: Skill[] = [
     id: "burning",
     name: "燃焼",
     effect: "burning",
-    description: "止まったマスに燃焼3を配置。通過すると3ダメージ。",
+    description: "相手のスキルボードに燃焼3を配置。通過すると3ダメージ。",
   },
   {
     id: "tackle",
@@ -1490,8 +1490,9 @@ export function App() {
           return;
         }
         case "burning": {
-          unit.burns[slotIndex] = (unit.burns[slotIndex] ?? 0) + 3;
-          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。このマスに燃焼3を配置。`, "bad", "none");
+          const targetSlotIndex = slotIndex % enemy.skillBoard.length;
+          enemyBurns[targetSlotIndex] = (enemyBurns[targetSlotIndex] ?? 0) + 3;
+          await unitEvent(unit, skill, roll, slotIndex, `${unit.name}の${skill.name}。敵スキルボード${targetSlotIndex + 1}に燃焼3を配置。`, "bad", "none");
           return;
         }
         case "tackle": {
@@ -1649,8 +1650,11 @@ export function App() {
           return;
         }
         case "burning": {
-          enemyBurns[slotIndex] = (enemyBurns[slotIndex] ?? 0) + 3;
-          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。このマスに燃焼3を配置。`, "bad", "self");
+          const target = weakestUnit();
+          if (!target) return;
+          const targetSlotIndex = slotIndex % target.skillBoard.length;
+          target.burns[targetSlotIndex] = (target.burns[targetSlotIndex] ?? 0) + 3;
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。${target.name}のスキルボード${targetSlotIndex + 1}に燃焼3を配置。`, "bad", "unit", undefined, target.id);
           return;
         }
         case "tackle":
