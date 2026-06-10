@@ -1210,8 +1210,14 @@ export function App() {
     const enemy = makeEnemy(nextBattle, enemySkillBoard);
     const logs: string[] = [`${enemy.name}が現れた。`];
     let enemyPoison = 0;
+    let partyPoison = 0;
     let battleCoins = 0;
     let enemyHp = enemy.maxHp;
+    let enemyTempHp = 0;
+    let enemyFocus = 0;
+    let enemyMana = 0;
+    const enemyCharges: Record<string, number> = {};
+    const enemyBurns: Record<number, number> = {};
 
     const snapshotUnits = () =>
       fighters.map(({ tempHp: _tempHp, focus: _focus, swiftTurns: _swiftTurns, swiftBonus: _swiftBonus, mana: _mana, charges: _charges, burns: _burns, ...unit }) => ({
@@ -1357,7 +1363,10 @@ export function App() {
     function damageEnemy(unit: BattleUnit, baseDamage: number) {
       const focused = unit.focus > 0;
       if (focused) unit.focus -= 1;
-      const damage = focused ? baseDamage * 2 : baseDamage;
+      const incomingDamage = focused ? baseDamage * 2 : baseDamage;
+      const absorbed = Math.min(enemyTempHp, incomingDamage);
+      enemyTempHp -= absorbed;
+      const damage = incomingDamage - absorbed;
       enemy.hp -= damage;
       return { damage, focused };
     }
@@ -1503,6 +1512,159 @@ export function App() {
       }
     }
 
+    function damageUnit(target: BattleUnit, amount: number) {
+      const absorbed = Math.min(target.tempHp, amount);
+      target.tempHp -= absorbed;
+      target.hp -= amount - absorbed;
+    }
+
+    function weakestUnit() {
+      return fighters.filter((unit) => unit.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
+    }
+
+    async function enemyEvent(
+      skill: Skill,
+      slotIndex: number,
+      text: string,
+      tone: Tone,
+      target: Extract<BattleEvent, { type: "enemy" }>["target"],
+      value?: number,
+      targetUnitId?: string,
+    ) {
+      logs.push(text);
+      await playEvent({
+        type: "enemy",
+        enemyName: enemy.name,
+        skillName: skill.name,
+        slotIndex,
+        nextIndex: enemy.boardIndex,
+        text,
+        target,
+        targetUnitId,
+        value,
+        tone,
+      });
+    }
+
+    async function enemyAttackUnit(skill: Skill, slotIndex: number, baseDamage: number) {
+      const target = weakestUnit();
+      if (!target) return;
+      const damage = enemyFocus > 0 ? baseDamage * 2 : baseDamage;
+      const focused = enemyFocus > 0;
+      if (focused) enemyFocus -= 1;
+      damageUnit(target, damage);
+      await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。${target.name}に${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "unit", damage, target.id);
+    }
+
+    async function enemyAttackParty(skill: Skill, slotIndex: number, baseDamage: number) {
+      const damage = enemyFocus > 0 ? baseDamage * 2 : baseDamage;
+      const focused = enemyFocus > 0;
+      if (focused) enemyFocus -= 1;
+      fighters.forEach((target) => {
+        if (target.hp > 0) damageUnit(target, damage);
+      });
+      await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。味方全員に${damage}ダメージ${focused ? "。集中で2倍" : ""}。`, "bad", "party", damage);
+    }
+
+    async function resolveEnemySkill(skill: Skill, slotIndex: number, chainDepth = 0): Promise<void> {
+      switch (skill.effect) {
+        case "guard": {
+          enemyTempHp += skillValues.guard;
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。一時HP+${skillValues.guard}。`, "good", "self", skillValues.guard);
+          return;
+        }
+        case "quickStab":
+          await enemyAttackUnit(skill, slotIndex, skillValues.quickStab);
+          return;
+        case "heal": {
+          const amount = skillValues.heal;
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。HPを${amount}回復。`, "good", "self", amount);
+          return;
+        }
+        case "firebolt": {
+          if (enemyMana < (skill.cost ?? 2)) {
+            await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。マナ不足。`, "neutral", "self");
+            return;
+          }
+          enemyMana -= skill.cost ?? 2;
+          await enemyAttackUnit(skill, slotIndex, skillValues.firebolt);
+          return;
+        }
+        case "rally": {
+          const amount = skillValues.rally;
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。HPを${amount}回復。`, "good", "self", amount);
+          return;
+        }
+        case "heavySlash":
+          await enemyAttackUnit(skill, slotIndex, skillValues.heavySlash);
+          return;
+        case "spiritSlash": {
+          await enemyAttackUnit(skill, slotIndex, skillValues.spiritSlash);
+          enemyCharges[skill.id] = (enemyCharges[skill.id] ?? 0) + 1;
+          if (enemyCharges[skill.id] >= 2) {
+            enemyCharges[skill.id] = 0;
+            const heal = Math.ceil(enemy.maxHp * 0.5);
+            enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
+            await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。チャージ完了。HPを${heal}回復。`, "good", "self", heal);
+          }
+          return;
+        }
+        case "poison": {
+          partyPoison += 3;
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。味方に毒3を付与。`, "bad", "party");
+          return;
+        }
+        case "focus": {
+          enemyFocus += 1;
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。集中+1。次の攻撃が2倍。`, "good", "self");
+          return;
+        }
+        case "meditate": {
+          enemyMana += 2;
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。マナ+2。現在${enemyMana}。`, "good", "self");
+          return;
+        }
+        case "stance": {
+          if (enemyMana < (skill.cost ?? 1)) {
+            await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。マナ不足。`, "neutral", "self");
+            return;
+          }
+          enemyMana -= skill.cost ?? 1;
+          if (chainDepth >= enemy.skillBoard.length) {
+            await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。これ以上は進めない。`, "neutral", "self");
+            return;
+          }
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。マナ1消費して1マス進む。`, "good", "self");
+          const nextSlotIndex = enemy.boardIndex % enemy.skillBoard.length;
+          const nextSkill = enemy.skillBoard[nextSlotIndex];
+          enemy.boardIndex = (enemy.boardIndex + 1) % enemy.skillBoard.length;
+          await resolveEnemySkill(nextSkill, nextSlotIndex, chainDepth + 1);
+          return;
+        }
+        case "slot": {
+          const gain = Math.ceil(Math.random() * 6);
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。${gain}ゴールド獲得。`, "good", "self");
+          return;
+        }
+        case "burning": {
+          enemyBurns[slotIndex] = (enemyBurns[slotIndex] ?? 0) + 3;
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。このマスに燃焼3を配置。`, "bad", "self");
+          return;
+        }
+        case "tackle":
+          await enemyAttackUnit(skill, slotIndex, 2);
+          return;
+        case "dash":
+          await enemyEvent(skill, slotIndex, `${enemy.name}の${skill.name}。迅速3を獲得。`, "good", "self");
+          return;
+        case "attack":
+        default:
+          await enemyAttackUnit(skill, slotIndex, skillValues.attack);
+      }
+    }
+
     setBattleUnits(snapshotUnits());
 
     setBattleView({
@@ -1547,6 +1709,24 @@ export function App() {
         enemy.hp -= enemyPoison;
         await effectEvent(`毒で${enemyPoison}ダメージ。`, "bad", "enemy", enemyPoison);
         enemyPoison = Math.max(0, enemyPoison - 1);
+      }
+      if (partyPoison > 0) {
+        fighters.forEach((target) => {
+          if (target.hp > 0) damageUnit(target, partyPoison);
+        });
+        logs.push(`毒で味方全員に${partyPoison}ダメージ。`);
+        await playEvent({
+          type: "enemy",
+          enemyName: enemy.name,
+          skillName: "毒",
+          slotIndex: enemy.boardIndex,
+          nextIndex: enemy.boardIndex,
+          text: `毒で味方全員に${partyPoison}ダメージ。`,
+          target: "party",
+          value: partyPoison,
+          tone: "bad",
+        });
+        partyPoison = Math.max(0, partyPoison - 1);
       }
       if (enemy.hp <= 0 || fighters.every((unit) => unit.hp <= 0)) break;
 
@@ -1594,71 +1774,16 @@ export function App() {
 
         const slotIndex = enemy.boardIndex % enemy.skillBoard.length;
         const skill = enemy.skillBoard[slotIndex];
-        const role = enemySkillRole(skill);
         enemy.boardIndex = (enemy.boardIndex + 1) % enemy.skillBoard.length;
-
-        if (role === "recover") {
-          const amount = Math.ceil(enemy.power * 1.2);
-          enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
-          const text = `${enemy.name}の${skill.name}。HPを${amount}回復。`;
-          logs.push(text);
-          await playEvent({
-            type: "enemy",
-            enemyName: enemy.name,
-            skillName: skill.name,
-            slotIndex,
-            nextIndex: enemy.boardIndex,
-            text,
-            target: "self",
-            value: amount,
-            tone: "good",
-          });
-          continue;
+        if (enemyBurns[slotIndex] > 0) {
+          const burnDamage = 3;
+          enemy.hp = Math.max(0, enemy.hp - burnDamage);
+          enemyBurns[slotIndex] -= 1;
+          if (enemyBurns[slotIndex] <= 0) delete enemyBurns[slotIndex];
+          await effectEvent(`${enemy.name}が燃焼マスを通過。${burnDamage}ダメージ。`, "bad", "enemy", burnDamage);
+          if (enemy.hp <= 0) continue;
         }
-
-        if (role === "cleave") {
-          const damage = Math.max(1, Math.floor(enemy.power * 0.55));
-          fighters.forEach((target) => {
-            if (target.hp <= 0) return;
-            const absorbed = Math.min(target.tempHp, damage);
-            target.tempHp -= absorbed;
-            target.hp -= damage - absorbed;
-          });
-          const text = `${enemy.name}の${skill.name}。味方全員に${damage}ダメージ。`;
-          logs.push(text);
-          await playEvent({
-            type: "enemy",
-            enemyName: enemy.name,
-            skillName: skill.name,
-            slotIndex,
-            nextIndex: enemy.boardIndex,
-            text,
-            target: "party",
-            value: damage,
-            tone: "bad",
-          });
-          continue;
-        }
-
-        const target = fighters.filter((unit) => unit.hp > 0).sort((a, b) => a.hp / maxHp(a) - b.hp / maxHp(b))[0];
-        const damage = role === "heavy" ? enemy.power + 3 : enemy.power;
-        const absorbed = Math.min(target.tempHp, damage);
-        target.tempHp -= absorbed;
-        target.hp -= damage - absorbed;
-        const text = `${enemy.name}の${skill.name}。${target.name}に${damage}ダメージ。`;
-        logs.push(text);
-        await playEvent({
-          type: "enemy",
-          enemyName: enemy.name,
-          skillName: skill.name,
-          slotIndex,
-          nextIndex: enemy.boardIndex,
-          text,
-          target: "unit",
-          targetUnitId: target.id,
-          value: damage,
-          tone: "bad",
-        });
+        await resolveEnemySkill(skill, slotIndex);
       }
     }
 
