@@ -362,8 +362,8 @@ const initialHero: Unit = {
   id: "hero",
   name: "アレン",
   job: "勇者",
-  hp: 50,
-  maxHp: 50,
+  hp: 30,
+  maxHp: 30,
   boardIndex: 0,
   skillBoard: [normalAttack, normalAttack, normalAttack, normalAttack, normalAttack, normalAttack],
 };
@@ -420,8 +420,8 @@ function makeEnemy(battleCount: number, skillBoard?: Skill[]): EnemyCombatant {
   const skillCount = isBoss ? 6 : isMidBoss ? 5 : 4;
   return {
     name: isBoss ? "最終ボス" : isMidBoss ? "中ボス" : "魔物",
-    hp: 28 + battleCount * 12,
-    maxHp: 28 + battleCount * 12,
+    hp: 10 + battleCount * 2,
+    maxHp: 10 + battleCount * 2,
     power: 4 + battleCount * 2,
     agility: 3 + battleCount,
     boardIndex: 0,
